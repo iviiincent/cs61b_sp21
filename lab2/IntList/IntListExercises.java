@@ -80,8 +80,8 @@ public class IntListExercises {
         if (currElemIsPrime) {
             lst.first *= lst.first;
         }
-
         boolean restChanged = squarePrimes(lst.rest);
+
         return currElemIsPrime || restChanged;
     }
 }
