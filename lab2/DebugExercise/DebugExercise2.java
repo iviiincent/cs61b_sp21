@@ -1,20 +1,11 @@
 package DebugExercise;
 
-import java.util.Arrays;
 
 /**
  * Exercise to showcase the step over button.
  * Code adapted from https://stackoverflow.com/questions/4895173/bitwise-multiply-and-add-in-java and https://stackoverflow.com/questions/1533131/what-useful-bitwise-operator-code-tricks-should-a-developer-know-about
  */
 public class DebugExercise2 {
-    /**
-     * Returns the max of a and b. Do not step into this function.
-     */
-    public static int max(int a, int b) {
-        return Math.max(a, b);
-    }
-
-
     /**
      * Returns the sum of a and b. Do not step into this function.
      */
@@ -47,7 +38,7 @@ public class DebugExercise2 {
         }
         int[] returnArray = new int[a.length];
         for (int i = 0; i < a.length; i += 1) {
-            int biggerValue = max(a[i], b[i]);
+            int biggerValue = Math.max(a[i], b[i]);
             returnArray[i] = biggerValue;
         }
 
@@ -76,7 +67,6 @@ public class DebugExercise2 {
         int sumofMaxes = arraySum(maxes);
         return sumofMaxes;
     }
-
 
     public static void main(String[] args) {
         int[] a = {1, 11, -1, -11};
