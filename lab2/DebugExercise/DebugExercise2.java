@@ -61,7 +61,7 @@ public class DebugExercise2 {
     public static int arraySum(int[] x) {
         int sum = 0;
         for (int n : x) {
-            sum += n;
+            sum = add(sum, n);
         }
         return sum;
     }
