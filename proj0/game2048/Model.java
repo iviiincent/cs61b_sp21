@@ -143,6 +143,35 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+        board.setViewingPerspective(side);
+        for (int col = 0; col < board.size(); col++) {
+            int pre_row = board.size() - 1;
+            for (int row = board.size() - 2; row >= 0; row--) {
+                Tile cur_tile = board.tile(col, row);
+                // Do not need to move.
+                if (cur_tile == null || pre_row == row) {
+                    continue;
+                }
+
+                // Move.
+                changed = true;
+                Tile pre_tile = board.tile(col, pre_row);
+
+                // Merge, can not be used to merge anymore.
+                if (pre_tile != null && pre_tile.value() == cur_tile.value()) {
+                    score += cur_tile.value() * 2;
+                    board.move(col, pre_row, cur_tile);
+                    pre_row -= 1;
+                } else if (pre_tile != null) { // Move to 1 unit under pre_tile
+                    board.move(col, pre_row - 1, cur_tile);
+                    pre_row -= 1;
+                } else { // Move to pre_tile
+                    board.move(col, pre_row, cur_tile);
+                }
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);
+
 
         checkGameOver();
         if (changed) {
@@ -223,7 +252,7 @@ public class Model extends Observable {
 
         for (int i = 0; i < b.size() - 1; i++) {
             if (b.tile(i, b.size() - 1).value() == b.tile(i + 1, b.size() - 1).value()
-                || b.tile(b.size() - 1, i).value() == b.tile(b.size() - 1, i + 1).value()) {
+                    || b.tile(b.size() - 1, i).value() == b.tile(b.size() - 1, i + 1).value()) {
                 return true;
             }
         }
@@ -233,7 +262,7 @@ public class Model extends Observable {
 
 
     @Override
-    /** Returns the model as a string, used for debugging. */
+/** Returns the model as a string, used for debugging. */
     public String toString() {
         Formatter out = new Formatter();
         out.format("%n[%n");
@@ -253,7 +282,7 @@ public class Model extends Observable {
     }
 
     @Override
-    /** Returns whether two models are equal. */
+/** Returns whether two models are equal. */
     public boolean equals(Object o) {
         if (o == null) {
             return false;
@@ -265,7 +294,7 @@ public class Model extends Observable {
     }
 
     @Override
-    /** Returns hash code of Model’s string. */
+/** Returns hash code of Model’s string. */
     public int hashCode() {
         return toString().hashCode();
     }
