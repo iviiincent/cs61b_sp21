@@ -1,3 +1,6 @@
 [submodule "library-sp21"]
 	path = library-sp21
 	url = https://github.com/Berkeley-CS61B/library-sp21
+[submodule "lectureCode-fa20"]
+	path = lectureCode-fa20
+	url = https://github.com/Berkeley-CS61B/lectureCode-fa20.git
