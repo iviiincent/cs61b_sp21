@@ -34,15 +34,14 @@ public class TimeAList {
         Stopwatch sw = new Stopwatch();
 
         for (int i = 0; i < 128000; i++) {
-            if (i == target) {
+            list.addLast(i);
+            op += 1;
+            if (list.size() == target) {
                 ns.addLast(list.size());
                 times.addLast(sw.elapsedTime());
                 ops.addLast(op);
                 target *= 2;
             }
-            list.addLast(i);
-            op += 1;
-
         }
         printTimingTable(ns, times, ops);
     }

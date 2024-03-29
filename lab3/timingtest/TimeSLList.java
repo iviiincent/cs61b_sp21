@@ -20,7 +20,6 @@ public class TimeSLList {
 
     public static void main(String[] args) {
         timeGetLast();
-        System.out.printf("end");
     }
 
     public static void timeGetLast() {
@@ -32,8 +31,9 @@ public class TimeSLList {
 
         final int op = 10000;
         int target = 1000;
-        for (int i = 0; i <= 128000; i++) {
-            if (i == target) {
+        for (int i = 0; i < 128000; i++) {
+            list.addLast(i);
+            if (list.size() == target) {
                 Stopwatch sw = new Stopwatch();
                 for (int j = 0; j < op; j++) {
                     list.getLast();
@@ -43,7 +43,6 @@ public class TimeSLList {
                 ops.addLast(op);
                 target *= 2;
             }
-            list.addLast(i);
         }
         printTimingTable(ns, times, ops);
     }
