@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 public class TestBuggyAList {
     // YOUR TESTS HERE
     @Test
-    public void testThreeAddThreeRemove(){
+    public void testThreeAddThreeRemove() {
         AListNoResizing<Integer> al = new AListNoResizing<>();
         BuggyAList<Integer> bl = new BuggyAList<>();
 
@@ -20,7 +20,7 @@ public class TestBuggyAList {
             bl.addLast(i);
         }
         for (int i = 4; i <= 6; i++) {
-            assertEquals(al.removeLast(),bl.removeLast());
+            assertEquals(al.removeLast(), bl.removeLast());
         }
     }
 
@@ -32,26 +32,22 @@ public class TestBuggyAList {
 
         for (int i = 0; i < N; i += 1) {
             int operationNumber = StdRandom.uniform(0, 4);
-            if (operationNumber == 0) {
+            if (operationNumber == 0 && al.size() != 1000) {
                 // addLast
                 int randVal = StdRandom.uniform(0, 100);
                 al.addLast(randVal);
                 bl.addLast(randVal);
             } else if (operationNumber == 1) {
                 // size
-                assertEquals(al.size(),bl.size());
+                assertEquals(al.size(), bl.size());
             } else if (operationNumber == 2 && al.size() > 0) {
                 // getLast
                 assertEquals(al.getLast(), bl.getLast());
             } else if (operationNumber == 3 && al.size() > 0) {
                 // removeLast
                 assertEquals(al.removeLast(), bl.removeLast());
-                assertEquals(al.size(),bl.size());
+                assertEquals(al.size(), bl.size());
             }
         }
-
-
-
-
     }
 }

@@ -1,5 +1,5 @@
 package timingtest;
-import edu.princeton.cs.algs4.In;
+
 import edu.princeton.cs.algs4.Stopwatch;
 
 /**
@@ -20,6 +20,7 @@ public class TimeSLList {
 
     public static void main(String[] args) {
         timeGetLast();
+        System.out.printf("end");
     }
 
     public static void timeGetLast() {
@@ -31,18 +32,20 @@ public class TimeSLList {
 
         final int op = 10000;
         int target = 1000;
-        for (int i = 0; i < 1e7; i++) {
+        for (int i = 0; i < 130000; i++) {
             list.addLast(i);
             if (i == target) {
                 Stopwatch sw = new Stopwatch();
-                ns.addLast(list.getLast());
+                for (int j = 0; j < op; j++) {
+                    list.getLast();
+                }
+                ns.addLast(target);
                 times.addLast(sw.elapsedTime());
                 ops.addLast(op);
                 target *= 2;
             }
         }
-
-        printTimingTable(ns,times,ops);
+        printTimingTable(ns, times, ops);
     }
 
 }
