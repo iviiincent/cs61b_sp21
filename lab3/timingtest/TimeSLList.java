@@ -32,18 +32,18 @@ public class TimeSLList {
 
         final int op = 10000;
         int target = 1000;
-        for (int i = 0; i < 130000; i++) {
-            list.addLast(i);
+        for (int i = 0; i <= 128000; i++) {
             if (i == target) {
                 Stopwatch sw = new Stopwatch();
                 for (int j = 0; j < op; j++) {
                     list.getLast();
                 }
-                ns.addLast(target);
+                ns.addLast(list.size());
                 times.addLast(sw.elapsedTime());
                 ops.addLast(op);
                 target *= 2;
             }
+            list.addLast(i);
         }
         printTimingTable(ns, times, ops);
     }

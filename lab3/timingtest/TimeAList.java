@@ -33,7 +33,7 @@ public class TimeAList {
         int target = 1000;
         Stopwatch sw = new Stopwatch();
 
-        for (int i = 0; i < 1e7; i++) {
+        for (int i = 0; i < 128000; i++) {
             if (i == target) {
                 ns.addLast(list.size());
                 times.addLast(sw.elapsedTime());
