@@ -2,7 +2,7 @@ package deque;
 
 public class LinkedListDeque<T> implements Deque<T> {
 
-    private class LinkedNode<T> {
+    private static class LinkedNode<T> {
         T item;
         LinkedNode<T> pre;
         LinkedNode<T> nxt;
@@ -21,8 +21,8 @@ public class LinkedListDeque<T> implements Deque<T> {
 
     private int size;
 
-    private LinkedNode<T> head;
-    private LinkedNode<T> tail;
+    private final LinkedNode<T> head;
+    private final LinkedNode<T> tail;
 
     public LinkedListDeque() {
         size = 0;
