@@ -1,5 +1,6 @@
 package deque;
 
+import edu.princeton.cs.algs4.StdRandom;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -13,7 +14,7 @@ public class LinkedListDequeTest {
     @Test
     /** Adds a few things to the list, checking isEmpty() and size() are correct,
      * finally printing the results.
-     * <p>
+     *
      * && is the "and" operation. */
     public void addIsEmptySizeTest() {
 
@@ -112,6 +113,7 @@ public class LinkedListDequeTest {
         for (int i = 0; i < 1000000; i++) {
             lld1.addLast(i);
         }
+        assertEquals(lld1.get(20), lld1.getRecursive(20));
         for (double i = 0; i < 500000; i++) {
             assertEquals("Should have the same value", i, (double) lld1.removeFirst(), 0.0);
         }
@@ -119,6 +121,67 @@ public class LinkedListDequeTest {
         for (double i = 999999; i > 500000; i--) {
             assertEquals("Should have the same value", i, (double) lld1.removeLast(), 0.0);
         }
+    }
 
+    @Test
+    public void test() {
+        LinkedListDeque<Integer> d = new LinkedListDeque<>();
+        assertTrue(d.isEmpty());
+        d.addLast(1);
+        d.addLast(2);
+        d.addLast(3);
+        assertEquals(Integer.valueOf(1), d.removeFirst());
+        assertFalse(d.isEmpty());
+        assertEquals(Integer.valueOf(2), d.removeFirst());
+        assertEquals(Integer.valueOf(3), d.removeFirst());
+        d.addLast(9);
+        assertEquals(Integer.valueOf(9), d.removeFirst());
+    }
+
+    @Test
+    public void randomizedTest() {
+        ArrayDeque<Integer> al = new ArrayDeque<>();
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+        int N = 100000;
+
+        for (int i = 0; i < N; i += 1) {
+            int operationNumber = StdRandom.uniform(0, 5);
+            int randVal;
+            switch (operationNumber) {
+                case 0:
+                    // addLast
+                    randVal = StdRandom.uniform(0, 1000);
+                    System.out.println(i + " addLast" + randVal);
+                    al.addLast(randVal);
+                    lld.addLast(randVal);
+                    assertEquals(al.size(), lld.size());
+                    break;
+                case 1:
+                    // addFirst
+                    randVal = StdRandom.uniform(0, 1000);
+                    System.out.println(i + " addFirst " + randVal);
+                    al.addFirst(randVal);
+                    lld.addFirst(randVal);
+                    assertEquals(al.size(), lld.size());
+                    break;
+                case 2:
+                    // removeLast
+                    System.out.println(i + " removeLast");
+                    assertEquals(al.removeLast(), lld.removeLast());
+                    assertEquals(al.size(), lld.size());
+                    break;
+                case 3:
+                    // removeFirst
+                    System.out.println(i + " removeFirst");
+                    assertEquals(al.removeFirst(), lld.removeFirst());
+                    assertEquals(al.size(), lld.size());
+                    break;
+                case 4:
+                    // equals
+                    assertEquals(al, lld);
+                    assertEquals(lld, al);
+            }
+
+        }
     }
 }

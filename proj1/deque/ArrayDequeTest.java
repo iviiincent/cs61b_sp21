@@ -1,5 +1,6 @@
 package deque;
 
+import edu.princeton.cs.algs4.StdRandom;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -119,7 +120,53 @@ public class ArrayDequeTest {
         for (double i = 999999; i > 500000; i--) {
             assertEquals("Should have the same value", i, (double) lld1.removeLast(), 0.0);
         }
+    }
 
+    @Test
+    public void randomizedTest() {
+        ArrayDeque<Integer> al = new ArrayDeque<>();
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+        int N = 100000;
+
+        for (int i = 0; i < N; i += 1) {
+            int operationNumber = StdRandom.uniform(0, 5);
+            int randVal;
+            switch (operationNumber) {
+                case 0:
+                    // addLast
+                    randVal = StdRandom.uniform(0, 1000);
+                    System.out.println(i + " addLast" + randVal);
+                    al.addLast(randVal);
+                    lld.addLast(randVal);
+                    assertEquals(al.size(),lld.size());
+                    break;
+                case 1:
+                    // addFirst
+                    randVal = StdRandom.uniform(0, 1000);
+                    System.out.println(i + " addFirst " + randVal);
+                    al.addFirst(randVal);
+                    lld.addFirst(randVal);
+                    assertEquals(al.size(),lld.size());
+                    break;
+                case 2:
+                    // removeLast
+                    System.out.println(i + " removeLast");
+                    assertEquals(al.removeLast(), lld.removeLast());
+                    assertEquals(al.size(),lld.size());
+                    break;
+                case 3:
+                    // removeFirst
+                    System.out.println(i + " removeFirst");
+                    assertEquals(al.removeFirst(), lld.removeFirst());
+                    assertEquals(al.size(),lld.size());
+                    break;
+                case 4:
+                    // equals
+                    assertEquals(al, lld);
+                    assertEquals(lld, al);
+            }
+
+        }
     }
 }
 

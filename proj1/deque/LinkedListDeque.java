@@ -1,17 +1,24 @@
 package deque;
 
-public class LinkedListDeque<T> implements Deque<T> {
+import java.util.Iterator;
+
+public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
+
+    @Override
+    public Iterator<T> iterator() {
+        return new LinkedListDequeIterator();
+    }
 
     private static class LinkedNode<T> {
         T item;
         LinkedNode<T> pre;
         LinkedNode<T> nxt;
 
-        public LinkedNode(T item) {
+        LinkedNode(T item) {
             this.item = item;
         }
 
-        public LinkedNode(T item, LinkedNode<T> pre, LinkedNode<T> nxt) {
+        LinkedNode(T item, LinkedNode<T> pre, LinkedNode<T> nxt) {
             this.item = item;
             this.pre = pre;
             this.nxt = nxt;
@@ -19,13 +26,29 @@ public class LinkedListDeque<T> implements Deque<T> {
 
     }
 
-    private int size;
+    private class LinkedListDequeIterator implements Iterator<T> {
+
+        LinkedNode<T> node = head.nxt;
+
+        @Override
+        public boolean hasNext() {
+            return node != tail;
+        }
+
+        @Override
+        public T next() {
+            LinkedNode<T> cur = node;
+            node = node.nxt;
+            return cur.item;
+        }
+    }
+
+    private int size = 0;
 
     private final LinkedNode<T> head;
     private final LinkedNode<T> tail;
 
     public LinkedListDeque() {
-        size = 0;
         head = new LinkedNode<>(null);
         tail = new LinkedNode<>(null);
         head.nxt = tail;
@@ -55,9 +78,10 @@ public class LinkedListDeque<T> implements Deque<T> {
 
     @Override
     public void printDeque() {
-        for (LinkedNode<T> node = head.nxt; node != tail; node = node.nxt) {
-            System.out.println(node.item);
+        for (T item : this) {
+            System.out.print(item + " ");
         }
+        System.out.println();
     }
 
     @Override
@@ -68,6 +92,7 @@ public class LinkedListDeque<T> implements Deque<T> {
         size -= 1;
         LinkedNode<T> node = head.nxt;
         head.nxt = node.nxt;
+        head.nxt.pre = head;
         return node.item;
     }
 
@@ -79,6 +104,7 @@ public class LinkedListDeque<T> implements Deque<T> {
         size -= 1;
         LinkedNode<T> node = tail.pre;
         tail.pre = node.pre;
+        tail.pre.nxt = tail;
         return node.item;
     }
 
@@ -96,10 +122,48 @@ public class LinkedListDeque<T> implements Deque<T> {
         } else {
             // Search from tail.
             LinkedNode<T> node = tail.pre;
+            index = size - index - 1;
             for (int i = 0; i < index; i++) {
                 node = node.pre;
             }
             return node.item;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+        if (o instanceof Deque) {
+            Deque<T> od = (Deque<T>) o;
+            if (size != od.size()) {
+                return false;
+            }
+            for (int i = 0; i < size; i++) {
+                if (!get(i).equals(od.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public T getRecursive(int index) {
+        return getRecursive(index, head.nxt);
+    }
+
+    private T getRecursive(int index, LinkedNode<T> node) {
+        if (node == tail) {
+            return null;
+        }
+        if (index == 0) {
+            return node.item;
+        }
+        return getRecursive(index - 1, node.nxt);
     }
 }
