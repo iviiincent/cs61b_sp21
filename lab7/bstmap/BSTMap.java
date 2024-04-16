@@ -5,22 +5,21 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val> {
+public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
 
     private Node root;
-    int size;
-    Set<Key> keySet;
+    private int size;
+    private Set<K> keySet = new TreeSet<>();
 
     public BSTMap() {
-        keySet = new TreeSet<>();
     }
 
     private class Node {
-        private Key key;
-        private Val val;
+        private K key;
+        private V val;
         private Node left, right;
 
-        public Node(Key key, Val val) {
+        public Node(K key, V val) {
             this.key = key;
             this.val = val;
         }
@@ -38,7 +37,7 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
 
     /* Returns true if this map contains a mapping for the specified key. */
     @Override
-    public boolean containsKey(Key key) {
+    public boolean containsKey(K key) {
         return keySet.contains(key);
     }
 
@@ -47,14 +46,17 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
      * map contains no mapping for the key.
      */
     @Override
-    public Val get(Key key) {
+    public V get(K key) {
         if (!containsKey(key)) {
             return null;
         }
         return get(root, key);
     }
 
-    private Val get(Node node, Key key) {
+    private V get(Node node, K key) {
+        if (node == null) {
+            return null;
+        }
         int cmp = key.compareTo(node.key);
         if (cmp < 0) {
             return get(node.left, key);
@@ -65,14 +67,6 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
         }
     }
 
-    // @Override
-    // public boolean containsKey(Object key) {
-    // if (key instanceof Key) {
-    // return containsKey(key);
-    // }
-    // return false;
-    // }
-
     /* Returns the number of key-value mappings in this map. */
     @Override
     public int size() {
@@ -81,7 +75,7 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
 
     /* Associates the specified value with the specified key in this map. */
     @Override
-    public void put(Key key, Val value) {
+    public void put(K key, V value) {
         if (containsKey(key)) {
             return;
         }
@@ -90,7 +84,7 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
         root = put(root, key, value);
     }
 
-    private Node put(Node node, Key key, Val value) {
+    private Node put(Node node, K key, V value) {
         if (node == null) {
             node = new Node(key, value);
         } else if (key.compareTo(node.key) < 0) {
@@ -103,31 +97,70 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
 
     /*
      * Returns a Set view of the keys contained in this map. Not required for Lab 7.
-     * If you don't implement this, throw an UnsupportedOperationException.
      */
     @Override
-    public Set<Key> keySet() {
+    public Set<K> keySet() {
         return keySet;
     }
 
     /*
      * Removes the mapping for the specified key from this map if present.
-     * Not required for Lab 7. If you don't implement this, throw an
-     * UnsupportedOperationException.
+     * Not required for Lab 7.
      */
     @Override
-    public Val remove(Key key) {
-        throw new UnsupportedOperationException();
+    public V remove(K key) {
+        V getVal = get(key);
+        if (getVal != null) {
+            size -= 1;
+            keySet.remove(key);
+            root = remove(root, key);
+        }
+        return getVal;
     }
 
     /*
      * Removes the entry for the specified key only if it is currently mapped to
-     * the specified value. Not required for Lab 7. If you don't implement this,
-     * throw an UnsupportedOperationException.
+     * the specified value.
      */
     @Override
-    public Val remove(Key key, Val value) {
-        throw new UnsupportedOperationException();
+    public V remove(K key, V value) {
+        V getVal = get(key);
+        if (getVal != value || getVal == null) {
+            return null;
+        }
+        size -= 1;
+        keySet.remove(key);
+        remove(root, key);
+        return value;
+    }
+
+    private Node remove(Node node, K key) {
+        int cmp = key.compareTo(node.key);
+        if (cmp < 0) {
+            node.left = remove(node.left, key);
+            return node;
+        } else if (cmp > 0) {
+            node.right = remove(node.right, key);
+            return node;
+        }
+
+        // Deletes node NODE
+        if (node.left == null && node.right == null) {
+            return null;
+        } else if (node.left == null) {
+            return node.right;
+        } else if (node.right == null) {
+            return node.left;
+        } else {
+            Node nextNode = node.right;
+            while (nextNode.left != null) {
+                nextNode = nextNode.left;
+            }
+            node.key = nextNode.key;
+            node.val = nextNode.val;
+            node.right = remove(node.right, nextNode.key);
+            return node;
+        }
     }
 
     /**
@@ -136,15 +169,22 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
      * @return an Iterator.
      */
     @Override
-    public Iterator<Key> iterator() {
+    public Iterator<K> iterator() {
         return new BSTMapIterator();
     }
 
-    private class BSTMapIterator implements Iterator<Key> {
-        ArrayList<Key> res;
+    public void printInOrder() {
+        for (K key : this) {
+            System.out.print(key + " ");
+        }
+        System.out.println();
+    }
+
+    private class BSTMapIterator implements Iterator<K> {
+        ArrayList<K> res = new ArrayList<>(size);
         int i;
 
-        public void BSTMapIterator() {
+        public BSTMapIterator() {
             preOrder(root);
             i = 0;
         }
@@ -153,13 +193,9 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
             if (node == null) {
                 return;
             }
-            if (node.left != null) {
-                preOrder(node.left);
-            }
+            preOrder(node.left);
             res.add(node.key);
-            if (node.right != null) {
-                preOrder(node.right);
-            }
+            preOrder(node.right);
         }
 
         /**
@@ -171,7 +207,7 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
          */
         @Override
         public boolean hasNext() {
-            return i < size;
+            return i < res.size();
         }
 
         /**
@@ -180,7 +216,7 @@ public class BSTMap<Key extends Comparable<Key>, Val> implements Map61B<Key, Val
          * @return the next element in the iteration
          */
         @Override
-        public Key next() {
+        public K next() {
             return res.get(i++);
         }
     }
