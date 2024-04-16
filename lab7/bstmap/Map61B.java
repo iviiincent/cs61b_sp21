@@ -14,10 +14,13 @@ public interface Map61B<K, V> extends Iterable<K> {
     /* Returns true if this map contains a mapping for the specified key. */
     boolean containsKey(K key);
 
-    /* Returns the value to which the specified key is mapped, or null if this
+    /*
+     * Returns the value to which the specified key is mapped, or null if this
      * map contains no mapping for the key.
      */
     V get(K key);
+
+//    boolean containsKey(Object key);
 
     /* Returns the number of key-value mappings in this map. */
     int size();
@@ -25,18 +28,24 @@ public interface Map61B<K, V> extends Iterable<K> {
     /* Associates the specified value with the specified key in this map. */
     void put(K key, V value);
 
-    /* Returns a Set view of the keys contained in this map. Not required for Lab 7.
-     * If you don't implement this, throw an UnsupportedOperationException. */
+    /*
+     * Returns a Set view of the keys contained in this map. Not required for Lab 7.
+     * If you don't implement this, throw an UnsupportedOperationException.
+     */
     Set<K> keySet();
 
-    /* Removes the mapping for the specified key from this map if present.
+    /*
+     * Removes the mapping for the specified key from this map if present.
      * Not required for Lab 7. If you don't implement this, throw an
-     * UnsupportedOperationException. */
+     * UnsupportedOperationException.
+     */
     V remove(K key);
 
-    /* Removes the entry for the specified key only if it is currently mapped to
+    /*
+     * Removes the entry for the specified key only if it is currently mapped to
      * the specified value. Not required for Lab 7. If you don't implement this,
-     * throw an UnsupportedOperationException.*/
+     * throw an UnsupportedOperationException.
+     */
     V remove(K key, V value);
 
 }
