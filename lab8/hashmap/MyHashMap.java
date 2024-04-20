@@ -14,16 +14,6 @@ import java.util.*;
 public class MyHashMap<K, V> implements Map61B<K, V> {
 
     /**
-     * Returns an iterator over elements of type {@code T}.
-     *
-     * @return an Iterator.
-     */
-    @Override
-    public Iterator<K> iterator() {
-        return new KIterator();
-    }
-
-    /**
      * Protected helper class to store key/value pairs
      * The protected qualifier allows subclass access
      */
@@ -40,7 +30,6 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     /* Instance Variables */
     private static final int DEFAULT_INITIAL_CAPACITY = 16;
     private static final double DEFAULT_MAX_LOADER = 0.75;
-
 
     private final int initialSize;
     private int size = 0;
@@ -161,11 +150,10 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     }
 
     private Node getNode(K k) {
-        for (Collection<Node> bucket : buckets) {
-            for (Node node : bucket) {
-                if (k.equals(node.key)) {
-                    return node;
-                }
+        int index = getIndex(k);
+        for (Node node : buckets[index]) {
+            if (k.equals(node.key)) {
+                return node;
             }
         }
         return null;
@@ -198,35 +186,42 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     @Override
     public Set<K> keySet() {
         Set<K> set = new HashSet<>();
-
-        NodeIterator iteratorNode = new NodeIterator();
-        while (iteratorNode.hasNext()) {
-            Node node = iteratorNode.next();
-            set.add(node.key);
+        for (K k : this) {
+            set.add(k);
         }
         return set;
     }
 
     /**
      * Removes the mapping for the specified key from this map if present.
-     * Not required for Lab 8. If you don't implement this, throw an
-     * UnsupportedOperationException.
      */
     @Override
     public V remove(K key) {
-        throw new UnsupportedOperationException();
+        Node node = getNode(key);
+        if (node == null) {
+            return null;
+        }
+
+        V val = node.value;
+        buckets[getIndex(key)].remove(node);
+        size -= 1;
+        return val;
     }
 
     /**
      * Removes the entry for the specified key only if it is currently mapped to
-     * the specified value. Not required for Lab 8. If you don't implement this,
-     * throw an UnsupportedOperationException.
      */
     @Override
     public V remove(K key, V value) {
-        throw new UnsupportedOperationException();
-    }
+        Node node = getNode(key);
+        if (node == null || value != node.value) {
+            return null;
+        }
 
+        buckets[getIndex(key)].remove(node);
+        size -= 1;
+        return value;
+    }
 
     /**
      * Resize current table from size to toSize.
@@ -244,7 +239,6 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
         buckets = table;
     }
 
-
     /**
      * Checks if the table is overloaded if adding node.
      */
@@ -260,9 +254,12 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
         return Math.floorMod(k.hashCode(), len);
     }
 
+    @Override
+    public Iterator<K> iterator() {
+        return new KIterator();
+    }
 
     private class NodeIterator implements Iterator<Node> {
-
 
         private final Iterator<Collection<Node>> tableIterator = Arrays.stream(buckets).iterator();
         private Iterator<Node> bucketIterator = tableIterator.next().iterator();
@@ -299,11 +296,9 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
             return nodeIterator.hasNext();
         }
 
-
         @Override
         public K next() {
             return nodeIterator.next().key;
         }
     }
 }
-
