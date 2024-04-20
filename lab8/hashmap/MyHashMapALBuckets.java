@@ -5,6 +5,7 @@ import java.util.Collection;
 
 /**
  * Hash Table with Array List buckets
+ * 
  * @author Neil Kulkarni
  */
 public class MyHashMapALBuckets<K, V> extends MyHashMap<K, V> {
@@ -32,7 +33,7 @@ public class MyHashMapALBuckets<K, V> extends MyHashMap<K, V> {
      * The load factor (# items / # buckets) should always be <= loadFactor
      *
      * @param initialSize initial size of backing array
-     * @param maxLoad maximum load factor
+     * @param maxLoad     maximum load factor
      */
     public MyHashMapALBuckets(int initialSize, double maxLoad) {
         super(initialSize, maxLoad);

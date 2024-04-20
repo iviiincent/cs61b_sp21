@@ -1,8 +1,10 @@
 package hashmap;
 
 import java.util.Set;
+
 /**
- * Your implementation hashmap.MyHashMap should implement this interface. To do so,
+ * Your implementation hashmap.MyHashMap should implement this interface. To do
+ * so,
  * append "implements hashmap.Map61B<K, V>" to the end of your "public class..."
  * declaration, though you can use other formal type parameters if you'd like.
  */
@@ -46,4 +48,3 @@ public interface Map61B<K, V> extends Iterable<K> {
      */
     V remove(K key, V value);
 }
-

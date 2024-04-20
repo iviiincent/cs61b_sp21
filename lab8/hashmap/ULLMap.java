@@ -5,11 +5,13 @@ import java.util.Set;
 
 /**
  * A data structure that uses a linked list to store pairs of keys and values.
- * Any key must appear at most once in the dictionary, but values may appear multiple
- * times. Key operations are get(key), put(key, value), and contains(key) methods. The value
+ * Any key must appear at most once in the dictionary, but values may appear
+ * multiple
+ * times. Key operations are get(key), put(key, value), and contains(key)
+ * methods. The value
  * associated to a key is the value in the last call to put with that key.
  */
-public class ULLMap<K, V>  implements Map61B<K, V> {
+public class ULLMap<K, V> implements Map61B<K, V> {
     int size = 0;
 
     /** Returns the value corresponding to KEY or null if no such value exists. */
@@ -82,7 +84,7 @@ public class ULLMap<K, V>  implements Map61B<K, V> {
      * in the dictionary.
      */
     private class Entry {
-        
+
         /**
          * Stores KEY as the key in this key-value pair, VAL as the value, and
          * NEXT as the next node in the linked list.
@@ -113,7 +115,7 @@ public class ULLMap<K, V>  implements Map61B<K, V> {
         V val;
         /** Stores the next Entry in the linked list. */
         Entry next;
-        
+
     }
 
     /** An iterator that iterates over the keys of the dictionary. */
@@ -131,7 +133,7 @@ public class ULLMap<K, V>  implements Map61B<K, V> {
         public boolean hasNext() {
             return cur != null;
         }
-       
+
         @Override
         public K next() {
             K ret = cur.key;
@@ -139,10 +141,9 @@ public class ULLMap<K, V>  implements Map61B<K, V> {
             return ret;
         }
 
-
         /** Stores the current key-value pair. */
         private Entry cur;
-    
+
     }
 
     @Override
@@ -161,4 +162,3 @@ public class ULLMap<K, V>  implements Map61B<K, V> {
     }
 
 }
-
