@@ -23,8 +23,6 @@ public class TimeAList {
     }
 
     public static void timeAListConstruction() {
-        // TODO: YOUR CODE HERE
-
         AList<Integer> list =new AList<>();
         AList<Integer> ns =new AList<>();
         AList<Double> times= new AList<>();
