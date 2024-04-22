@@ -3,7 +3,6 @@ package game2048;
 import java.util.Formatter;
 import java.util.Observable;
 
-
 /**
  * The state of a game of 2048.
  *
@@ -19,7 +18,7 @@ public class Model extends Observable {
      */
     private int score;
     /**
-     * Maximum score so far.  Updated when game ends.
+     * Maximum score so far. Updated when game ends.
      */
     private int maxScore;
     /**
@@ -27,9 +26,10 @@ public class Model extends Observable {
      */
     private boolean gameOver;
 
-    /* Coordinate System: column C, row R of the board (where row 0,
+    /*
+     * Coordinate System: column C, row R of the board (where row 0,
      * column 0 is the lower-left corner of the board) will correspond
-     * to board.tile(c, r).  Be careful! It works like (x, y) coordinates.
+     * to board.tile(c, r). Be careful! It works like (x, y) coordinates.
      */
 
     /**
@@ -140,9 +140,6 @@ public class Model extends Observable {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
         board.setViewingPerspective(side);
         for (int col = 0; col < board.size(); col++) {
             int pre_row = board.size() - 1;
@@ -172,7 +169,6 @@ public class Model extends Observable {
         }
         board.setViewingPerspective(Side.NORTH);
 
-
         checkGameOver();
         if (changed) {
             setChanged();
@@ -200,7 +196,6 @@ public class Model extends Observable {
      * Empty spaces are stored as null.
      */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
         for (int i = 0; i < b.size(); i++) {
             for (int j = 0; j < b.size(); j++) {
                 if (b.tile(i, j) == null) {
@@ -217,7 +212,6 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
         for (int i = 0; i < b.size(); i++) {
             for (int j = 0; j < b.size(); j++) {
                 Tile cur_tile = b.tile(i, j);
@@ -236,7 +230,6 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
         if (emptySpaceExists(b)) {
             return true;
         }
@@ -260,9 +253,8 @@ public class Model extends Observable {
         return false;
     }
 
-
     @Override
-/** Returns the model as a string, used for debugging. */
+    /** Returns the model as a string, used for debugging. */
     public String toString() {
         Formatter out = new Formatter();
         out.format("%n[%n");
@@ -282,7 +274,7 @@ public class Model extends Observable {
     }
 
     @Override
-/** Returns whether two models are equal. */
+    /** Returns whether two models are equal. */
     public boolean equals(Object o) {
         if (o == null) {
             return false;
@@ -294,7 +286,7 @@ public class Model extends Observable {
     }
 
     @Override
-/** Returns hash code of Model’s string. */
+    /** Returns hash code of Model’s string. */
     public int hashCode() {
         return toString().hashCode();
     }
