@@ -47,22 +47,34 @@ Represents the Staging Area, storing files being added and removed.
 
 ## Operations
 
-### gitlet init
+### gitlet init 
 
 #### Objects involved:
 - Branch
 - Commit
 - Head
 
-### gitlet add
+### gitlet add FILENAME
 
 #### Objects involved:
 - Blob
 - Staging
 
-### gitlet commit
+### gitlet commit MESSAGE
 
 #### Objects involved:
 - Branch
 - Commit
 - Staging
+
+### gitlet rm FILENAME
+
+#### Objects involved:
+- Commit
+- Staging
+
+### gielet log
+
+#### Objects involved:
+- Commit
+- Head

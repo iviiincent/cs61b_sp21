@@ -21,7 +21,6 @@ public class Main {
 //          TODO:
 //          - checkout -- [filename]
 //          - checkout [commit id] -- [filename]
-//          - log
 
         switch (args[0]) {
             case "init":
@@ -32,20 +31,39 @@ public class Main {
             case "add":
                 // gitlet.Main add FILENAME
                 validArgs(args, 2);
-                isInitialized();
+                checkInitiazed();
                 Repository.add(args[1]);
                 break;
             case "commit":
                 // gitlet.Main commit MESSAGE
                 validArgs(args, 2);
-                isInitialized();
+                checkInitiazed();
                 Repository.commit(args[1]);
                 break;
             case "rm":
                 // gitlet.Main rm FILENAME
                 validArgs(args, 2);
-                isInitialized();
+                checkInitiazed();
                 Repository.rm(args[1]);
+                break;
+            case "log":
+                // gitlet.Main log
+                validArgs(args, 1);
+                checkInitiazed();
+                Repository.log();
+                break;
+            case "global-log":
+                // gitlet.Main global-log
+                validArgs(args, 1);
+                checkInitiazed();
+                Repository.global_log();
+                break;
+            case "find":
+                // gitlet.Main find MESSAGE
+                validArgs(args, 2);
+                checkInitiazed();
+                Repository.find(args[1]);
+                break;
             default:
                 // invalid command
                 System.out.println("No command with that name exists.");
@@ -73,7 +91,7 @@ public class Main {
     /**
      * Quits when it's not initialized yet, otherwise continues to run.
      */
-    public static void isInitialized() {
+    public static void checkInitiazed() {
         if (!Repository.GITLET_DIR.exists()) {
             System.out.println("Not in an initialized Gitlet directory.");
             System.exit(0);

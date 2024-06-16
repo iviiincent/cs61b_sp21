@@ -2,6 +2,8 @@ package gitlet;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
 
 import static gitlet.Utils.join;
 
@@ -23,9 +25,14 @@ public class Repository {
     public static final File GITLET_DIR = join(CWD, ".gitlet");
 
     /**
-     * The objects directory, where blobs of files and commits are saved.
+     * The directory where blobs of files are saved.
      */
-    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    public static final File OBJECTS_DIR = join(GITLET_DIR, "blobs");
+
+    /**
+     * The directory where commits are saved.
+     */
+    public static final File COMMITS_DIR = join(GITLET_DIR, "commits");
 
     /**
      * The heads directory, where branches are saved.
@@ -62,21 +69,22 @@ public class Repository {
             System.exit(0);
         }
 
-        GITLET_DIR.mkdir();
-        OBJECTS_DIR.mkdir();
-        HEADS_DIR.mkdir();
+        if (!GITLET_DIR.mkdir() || !OBJECTS_DIR.mkdir()
+                || !COMMITS_DIR.mkdir() || !HEADS_DIR.mkdir()) {
+            System.out.println("mkdir failed.");
+            System.exit(0);
+        }
+
 
         Staging staging = new Staging();
         staging.save();
         Head.setHead("master");
 
-        Commit initCommit = new Commit("init");
+        Commit initCommit = new Commit("initial commit");
         initCommit.save();
 
         Branch branch = new Branch("master", initCommit.getCommitId());
         branch.save();
-
-
     }
 
     /**
@@ -105,14 +113,13 @@ public class Repository {
         }
 
         Blob blob = new Blob(addedFile);
-        String curSha = blob.getSha1();
 
         Commit lastCommit = Commit.getProjectHeadCommit();
         HashMap<String, String> trackedMap = lastCommit.getTrackedMap();
         String commitSha = trackedMap.get(filename);
 
         Staging staging = Staging.getCurStaging();
-        String stagingSha = staging.getAdditional().get(filename);
+        String stagingSha = staging.getAdditionalMap().get(filename);
         staging.addFile(filename, commitSha, stagingSha, blob);
         staging.save();
     }
@@ -136,7 +143,7 @@ public class Repository {
         /*
          * Failure cases: If no files have been staged, abort. Print the
          *  message "No changes added to the commit." Every commit must
-         *  have a non-blank message. If it doesn’t, print the error
+         *  have a non-blank message. If it does not, print the error
          *  message "Please enter a commit message." It is not a failure
          *  for tracked files to be missing from the working directory or
          *  changed in the working directory. Just ignore everything
@@ -164,6 +171,68 @@ public class Repository {
      * current commit).
      */
     public static void rm(String filename) {
+        /*
+         * Failure cases: If the file is neither staged nor tracked by the
+         *  head commit, print the error message "No reason to remove the
+         *  file."
+         */
+        Staging staging = Staging.getCurStaging();
+        staging.rmFile(filename);
+        staging.save();
+    }
 
+    /**
+     * Starting at the current head commit, display information about each
+     * commit backwards along the commit tree until the initial commit,
+     * following the first parent commit links, ignoring any second
+     * parents found in merge commits. (In regular Git, this is what you
+     * get with "git log --first-parent"). This set of commit nodes is
+     * called the commit’s history. For every node in this history, the
+     * information it should display is the commit id, the time the commit
+     * was made, and the commit message.
+     */
+    public static void log() {
+        Commit commit = Commit.getProjectHeadCommit();
+        while (commit.hasParents()) {
+            commit.printLog();
+            commit = commit.getParents()[0];
+        }
+        // Also prints the initial commit.
+        commit.printLog();
+    }
+
+    /**
+     * Like log, except displays information about all commits ever made.
+     * The order of the commits does not matter.
+     */
+    public static void global_log() {
+        for (Commit commit : Commit.getAllCommits()) {
+            commit.printLog();
+        }
+    }
+
+    /**
+     * Prints out the ids of all commits that have the given commit message,
+     * one per line. If there are multiple such commits, it prints the ids
+     * out on separate lines. The commit message is a single operand; to
+     * indicate a multiword message, put the operand in quotation marks,
+     * as for the commit command below.
+     */
+    public static void find(String message) {
+        /*
+         * Failure cases: If no such commit exists, prints the error
+         * message "Found no commit with that message."
+         */
+        List<Commit> commits = Commit.getAllCommits();
+        boolean found = false;
+        for (Commit commit : commits) {
+            if (Objects.equals(message, commit.getMessage())) {
+                System.out.println(commit.getCommitId());
+                found = true;
+            }
+        }
+        if (!found) {
+            System.out.println("Found no commit with that message.");
+        }
     }
 }
