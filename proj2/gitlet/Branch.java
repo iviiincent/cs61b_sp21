@@ -33,16 +33,6 @@ public class Branch {
         branchFile = join(Repository.HEADS_DIR, branchName);
     }
 
-
-    /**
-     * Return all branches' name.
-     *
-     * @return The names of all branches in this project.
-     */
-    public static List<String> getAllBranches() {
-        return plainFilenamesIn(Repository.HEADS_DIR);
-    }
-
     public static File getBranchFile(String branchName) {
         return join(Repository.HEADS_DIR, branchName);
     }
@@ -57,6 +47,10 @@ public class Branch {
 
     public void setHeadCommitId(String headCommitId) {
         this.headCommitId = headCommitId;
+    }
+
+    public static List<String> getAllBranchesName() {
+        return plainFilenamesIn(Repository.HEADS_DIR);
     }
 
     /**

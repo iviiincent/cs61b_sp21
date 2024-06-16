@@ -64,6 +64,12 @@ public class Main {
                 checkInitiazed();
                 Repository.find(args[1]);
                 break;
+            case "status":
+                // gitlet.Main status
+                validArgs(args, 1);
+                checkInitiazed();
+                Repository.status();
+                break;
             default:
                 // invalid command
                 System.out.println("No command with that name exists.");

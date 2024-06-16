@@ -2,10 +2,12 @@ package gitlet;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
 import static gitlet.Utils.join;
+import static gitlet.Utils.plainFilenamesIn;
 
 
 /**
@@ -234,5 +236,99 @@ public class Repository {
         if (!found) {
             System.out.println("Found no commit with that message.");
         }
+    }
+
+    /**
+     * Displays what branches currently exist, and marks the current
+     * branch with a *. Also displays what files have been staged
+     * for addition or removal.
+     */
+    public static void status() {
+        StringBuilder builder = new StringBuilder("=== Branches ===\n");
+        String headBranch = Head.getHeadBranchName();
+        List<String> branchesName = Branch.getAllBranchesName();
+        builder.append("*").append(headBranch).append("\n");
+        for (String branchName : branchesName) {
+            if (!Objects.equals(headBranch, branchName)) {
+                builder.append(branchName).append("\n");
+            }
+        }
+
+        Staging staging = Staging.getCurStaging();
+        HashMap<String, String> trackedMap =
+                Commit.getProjectHeadCommit().getTrackedMap();
+        HashMap<String, String> additionalMap = staging.getAdditionalMap();
+        HashSet<String> removalSet = staging.getRemovalSet();
+        List<String> wdFilesName = plainFilenamesIn(CWD);
+        if (wdFilesName == null) {
+            System.out.println("\n=== Staged Files ===\n" +
+                    "\n=== Removed Files ===\n" +
+                    "\n=== Modifications Not Staged For Commit ===\n" +
+                    "\n=== Untracked Files ===\n");
+            System.exit(0);
+        }
+        HashMap<String, Blob> wdBlobs = new HashMap<>();
+        for (String filename : wdFilesName) {
+            Blob blob = new Blob(join(Repository.CWD, filename));
+            wdBlobs.put(filename, blob);
+        }
+
+        builder.append("\n=== Staged Files ===\n");
+        for (String filename : additionalMap.keySet()) {
+            builder.append(filename).append("\n");
+        }
+
+        builder.append("\n=== Removed Files ===\n");
+        for (String filename : removalSet) {
+            builder.append(filename).append("\n");
+        }
+
+        builder.append("\n=== Modifications Not Staged For Commit ===\n");
+        HashSet<String> allFilesName = new HashSet<>(wdFilesName);
+        allFilesName.addAll(trackedMap.keySet());
+        for (String filename : allFilesName) {
+            Blob blob = wdBlobs.get(filename);
+            String trackedSha = trackedMap.get(filename);
+            String stagedSha = additionalMap.get(filename);
+            boolean isInWD = blob != null;
+            boolean isTracked = trackedSha != null;
+            boolean isStaged = stagedSha != null;
+            if (isInWD && isTracked && !Objects.equals(trackedSha, blob.getSha1()) && !isStaged) {
+                // Tracked in the current commit, changed in the working
+                // directory, but not staged; or
+                builder.append(filename).append("\n");
+            } else if (isInWD && isStaged && !Objects.equals(stagedSha, blob.getSha1())) {
+                // Staged for addition, but with different contents than
+                // in the working directory; or
+                builder.append(filename).append("\n");
+            } else if (!isInWD && isStaged) {
+                // Staged for addition, but deleted in the working
+                // directory; or
+                builder.append(filename).append("\n");
+            } else if (!removalSet.contains(filename) && isTracked && !isInWD) {
+                // Not staged for removal, but tracked in the current
+                // commit and deleted from the working directory.
+                builder.append(filename).append("\n");
+            }
+        }
+
+        builder.append("\n=== Untracked Files ===\n");
+        allFilesName = new HashSet<>(wdFilesName);
+        allFilesName.addAll(removalSet);
+        for (String filename : wdFilesName) {
+            boolean isTracked = trackedMap.containsKey(filename);
+            boolean isStaged = additionalMap.containsKey(filename);
+            boolean isInWD = wdFilesName.contains(filename);
+            if (isInWD && !isStaged && !isTracked) {
+                // In the working directory but neither staged for
+                // addition nor tracked.
+                builder.append(filename).append("\n");
+            } else if (removalSet.contains(filename) && isInWD) {
+                // Staged for removal, but then re-created without
+                // Gitlet’s knowledge
+                builder.append(filename).append("\n");
+            }
+        }
+        System.out.println(builder);
     }
 }
