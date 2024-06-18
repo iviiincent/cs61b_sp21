@@ -6,8 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
-import static gitlet.Utils.join;
-import static gitlet.Utils.plainFilenamesIn;
+import static gitlet.Utils.*;
 
 
 /**
@@ -108,6 +107,7 @@ public class Repository {
          * message "File does not exist".
          * And exit without changing anything.
          */
+        checkInitialized();
         File addedFile = join(CWD, filename);
         if (!addedFile.isFile()) {
             System.out.println("File does not exist.");
@@ -131,7 +131,8 @@ public class Repository {
      * area, so they can be restored at a later time, creating a new
      * commit. The commit is said to be tracking the saved files. By
      * default, each commit’s snapshot of files will be exactly the same
-     * as its parent commit’s snapshot of files; it will keep versions of files exactly as they are, and not update them. A commit will only
+     * as its parent commit’s snapshot of files; it will keep versions of
+     * files exactly as they are, and not update them. A commit will only
      * update the contents of files it is tracking that have been staged
      * for addition at the time of commit, in which case the commit will
      * now include the version of the file that was staged instead of the
@@ -140,8 +141,10 @@ public class Repository {
      * tracked by its parent. Finally, files tracked in the current commit
      * may be untracked in the new commit as a result being staged for
      * removal by the rm command (below).
+     *
+     * @return The id of the created commit.
      */
-    public static void commit(String message) {
+    public static String commit(String message) {
         /*
          * Failure cases: If no files have been staged, abort. Print the
          *  message "No changes added to the commit." Every commit must
@@ -151,6 +154,7 @@ public class Repository {
          *  changed in the working directory. Just ignore everything
          *  outside the .gitlet directory entirely.
          */
+        checkInitialized();
         if (message.isEmpty()) {
             System.out.println("Please enter a commit message.");
             System.exit(0);
@@ -163,6 +167,7 @@ public class Repository {
         branch.save();
         commit.save();
         Staging.clearStaging();
+        return commit.getCommitId();
     }
 
     /**
@@ -178,6 +183,7 @@ public class Repository {
          *  head commit, print the error message "No reason to remove the
          *  file."
          */
+        checkInitialized();
         Staging staging = Staging.getCurStaging();
         staging.rmFile(filename);
         staging.save();
@@ -194,6 +200,7 @@ public class Repository {
      * was made, and the commit message.
      */
     public static void log() {
+        checkInitialized();
         Commit commit = Commit.getProjectHeadCommit();
         while (commit.hasParents()) {
             commit.printLog();
@@ -207,7 +214,8 @@ public class Repository {
      * Like log, except displays information about all commits ever made.
      * The order of the commits does not matter.
      */
-    public static void global_log() {
+    public static void globalLog() {
+        checkInitialized();
         for (Commit commit : Commit.getAllCommits()) {
             commit.printLog();
         }
@@ -225,6 +233,7 @@ public class Repository {
          * Failure cases: If no such commit exists, prints the error
          * message "Found no commit with that message."
          */
+        checkInitialized();
         List<Commit> commits = Commit.getAllCommits();
         boolean found = false;
         for (Commit commit : commits) {
@@ -239,41 +248,29 @@ public class Repository {
     }
 
     /**
-     * Displays what branches currently exist, and marks the current
-     * branch with a *. Also displays what files have been staged
-     * for addition or removal.
+     * Prints the status of gitlet.
      */
     public static void status() {
-        StringBuilder builder = new StringBuilder("=== Branches ===\n");
-        String headBranch = Head.getHeadBranchName();
-        List<String> branchesName = Branch.getAllBranchesName();
-        builder.append("*").append(headBranch).append("\n");
-        for (String branchName : branchesName) {
-            if (!Objects.equals(headBranch, branchName)) {
-                builder.append(branchName).append("\n");
-            }
-        }
+        checkInitialized();
+        Branch.status();
 
+        List<String> wdFilesName = plainFilenamesIn(CWD);
         Staging staging = Staging.getCurStaging();
         HashMap<String, String> trackedMap =
                 Commit.getProjectHeadCommit().getTrackedMap();
         HashMap<String, String> additionalMap = staging.getAdditionalMap();
         HashSet<String> removalSet = staging.getRemovalSet();
-        List<String> wdFilesName = plainFilenamesIn(CWD);
-        if (wdFilesName == null) {
-            System.out.println("\n=== Staged Files ===\n" +
-                    "\n=== Removed Files ===\n" +
-                    "\n=== Modifications Not Staged For Commit ===\n" +
-                    "\n=== Untracked Files ===\n");
-            System.exit(0);
-        }
         HashMap<String, Blob> wdBlobs = new HashMap<>();
-        for (String filename : wdFilesName) {
-            Blob blob = new Blob(join(Repository.CWD, filename));
-            wdBlobs.put(filename, blob);
+        if (wdFilesName != null) {
+            for (String filename : wdFilesName) {
+                wdBlobs.put(
+                        filename,
+                        new Blob(join(Repository.CWD, filename)));
+            }
         }
 
-        builder.append("\n=== Staged Files ===\n");
+        StringBuilder builder = new StringBuilder();
+        builder.append("=== Staged Files ===\n");
         for (String filename : additionalMap.keySet()) {
             builder.append(filename).append("\n");
         }
@@ -284,51 +281,178 @@ public class Repository {
         }
 
         builder.append("\n=== Modifications Not Staged For Commit ===\n");
-        HashSet<String> allFilesName = new HashSet<>(wdFilesName);
-        allFilesName.addAll(trackedMap.keySet());
-        for (String filename : allFilesName) {
-            Blob blob = wdBlobs.get(filename);
-            String trackedSha = trackedMap.get(filename);
-            String stagedSha = additionalMap.get(filename);
-            boolean isInWD = blob != null;
-            boolean isTracked = trackedSha != null;
-            boolean isStaged = stagedSha != null;
-            if (isInWD && isTracked && !Objects.equals(trackedSha, blob.getSha1()) && !isStaged) {
-                // Tracked in the current commit, changed in the working
-                // directory, but not staged; or
-                builder.append(filename).append("\n");
-            } else if (isInWD && isStaged && !Objects.equals(stagedSha, blob.getSha1())) {
-                // Staged for addition, but with different contents than
-                // in the working directory; or
-                builder.append(filename).append("\n");
-            } else if (!isInWD && isStaged) {
-                // Staged for addition, but deleted in the working
-                // directory; or
-                builder.append(filename).append("\n");
-            } else if (!removalSet.contains(filename) && isTracked && !isInWD) {
-                // Not staged for removal, but tracked in the current
-                // commit and deleted from the working directory.
-                builder.append(filename).append("\n");
-            }
+        List<String> modifiedFiles = Staging.getModifiedFiles(
+                wdFilesName, trackedMap, wdBlobs, additionalMap, removalSet
+        );
+        for (String filename : modifiedFiles) {
+            builder.append(filename).append("\n");
         }
 
         builder.append("\n=== Untracked Files ===\n");
-        allFilesName = new HashSet<>(wdFilesName);
-        allFilesName.addAll(removalSet);
-        for (String filename : wdFilesName) {
-            boolean isTracked = trackedMap.containsKey(filename);
-            boolean isStaged = additionalMap.containsKey(filename);
-            boolean isInWD = wdFilesName.contains(filename);
-            if (isInWD && !isStaged && !isTracked) {
-                // In the working directory but neither staged for
-                // addition nor tracked.
-                builder.append(filename).append("\n");
-            } else if (removalSet.contains(filename) && isInWD) {
-                // Staged for removal, but then re-created without
-                // Gitlet’s knowledge
-                builder.append(filename).append("\n");
-            }
+        List<String> untrackedFiles = Staging.getUntrackedFiles(
+                wdFilesName, trackedMap, additionalMap, removalSet);
+        for (String filename : untrackedFiles) {
+            builder.append(filename).append("\n");
         }
         System.out.println(builder);
+    }
+
+    /**
+     * Handle three types of checkout command.
+     */
+    public static void checkout(String... args) {
+        checkInitialized();
+        if (args.length == 3 && args[1].equals("--")) {
+            // gitlet.Main checkout -- [file name]
+            checkoutFile(args[2]);
+        } else if (args.length == 4 && args[2].equals("--")) {
+            // gitlet.Main checkout [commit id] -- [file name]
+            checkoutFile(args[1], args[3]);
+        } else if (args.length == 2) {
+            // gitlet.Main checkout [branch name]
+            checkoutBranch(args[1]);
+        } else {
+            receiveInvalidCommand();
+        }
+    }
+
+    /**
+     * gitlet.Main checkout [commit id] -- [file name]
+     * <p>
+     * Takes the version of the file as it exists in the commit
+     * with the given id, and puts it in the working directory,
+     * overwriting the version of the file that’s already there
+     * if there is one. The new version of the file is not staged.
+     */
+    public static void checkoutFile(String commitId, String filename) {
+        Commit commit = Commit.getCommit(commitId);
+        if (commit == null) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        }
+        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        String trackedSha = trackedMap.get(filename);
+        if (trackedSha == null) {
+            System.out.println("File does not exist in that commit.");
+            System.exit(0);
+        }
+        File blobFile = Blob.getBlobFile(trackedSha);
+        File wroteFile = join(CWD, filename);
+        writeContents(wroteFile, readContents(blobFile));
+    }
+
+    /**
+     * gitlet.Main checkout -- [file name]
+     * <p>
+     * Takes the version of the file as it exists in the head
+     * commit and puts it in the working directory, overwriting
+     * the version of the file that’s already there if there is
+     * one. The new version of the file is not staged.
+     */
+    public static void checkoutFile(String filename) {
+        String commitId = Commit.getProjectHeadCommit().getCommitId();
+        checkoutFile(commitId, filename);
+    }
+
+    // TODO: not checked yet
+
+    /**
+     * gitlet.Main checkout [branch name]
+     * <p>
+     * Takes all files in the commit at the head of the given branch,
+     * and puts them in the working directory, overwriting the
+     * versions of the files that are already there if they exist. Also,
+     * at the end of this command, the given branch will now be
+     * considered the current branch (HEAD). Any files that are tracked
+     * in the current branch but are not present in the checked-out
+     * branch are deleted. The staging area is cleared, unless the
+     * checked-out branch is the current branch.
+     */
+    public static void checkoutBranch(String branchName) {
+        checkInitialized();
+        if (Objects.equals(Head.getHeadBranchName(), branchName)) {
+            System.out.println("No need to checkout the current branch.");
+            System.exit(0);
+        }
+
+        Commit commit = Commit.getHeadCommit(branchName);
+        if (commit == null) {
+            System.out.println("No such branch exists.");
+            System.exit(0);
+        }
+
+        Staging staging = Staging.getCurStaging();
+        List<String> wdFilesName = plainFilenamesIn(CWD);
+        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        HashMap<String, String> additionalMap = staging.getAdditionalMap();
+        HashSet<String> removalSet = staging.getRemovalSet();
+        List<String> untrackedFiles = Staging.getUntrackedFiles(
+                wdFilesName, trackedMap, additionalMap, removalSet
+        );
+
+        for (HashMap.Entry<String, String> entry : trackedMap.entrySet()) {
+            String filename = entry.getKey();
+            File writtenFile = join(CWD, filename);
+            File blobFile = Blob.getBlobFile(entry.getValue());
+            writeContents(writtenFile, readContents(blobFile));
+        }
+
+        Head.setHead(branchName);
+        Staging.clearStaging();
+    }
+
+    /**
+     * Creates a new branch with the given name, and points it at the
+     * current head commit. A branch is nothing more than a name for
+     * a reference (a SHA-1 identifier) to a commit node. This command
+     * does NOT immediately switch to the newly created branch (just as
+     * in real Git).
+     */
+    public static void branch(String branchName) {
+        List<String> branchNames = Branch.getAllBranchesName();
+        if (branchNames.contains(branchName)) {
+            System.out.println("A branch with that name already exists.");
+            System.exit(0);
+        }
+        Branch branch = new Branch(
+                branchName, Commit.getProjectHeadCommit().getCommitId());
+        branch.save();
+    }
+
+    /* Helper functions */
+
+    /**
+     * Checks if the number of ARGS equals to VALID NUMS.
+     * Quits if not valid.
+     *
+     * @param validNums Valid numbers of arguments.
+     *                  Can be more than one valid number.
+     */
+    public static void validArgs(String[] args, int... validNums) {
+        for (int n : validNums) {
+            if (args.length == n) {
+                return;
+            }
+        }
+        System.out.println("Incorrect operands.");
+        System.exit(0);
+    }
+
+    /**
+     * Has to run this when command is invalid.
+     */
+    public static void receiveInvalidCommand() {
+        System.out.println("No command with that name exists.");
+        System.exit(0);
+    }
+
+    /**
+     * Quits when it's not initialized yet, otherwise continues to run.
+     */
+    public static void checkInitialized() {
+        if (!Repository.GITLET_DIR.exists()) {
+            System.out.println("Not in an initialized Gitlet directory.");
+            System.exit(0);
+        }
     }
 }

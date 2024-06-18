@@ -2,9 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -17,8 +15,7 @@ public class Staging implements Serializable {
     /**
      * The file storing the staging object.
      */
-    public static File STAGINGFILE = join(Repository.GITLET_DIR, "index");
-
+    private static final File STAGINGFILE = join(Repository.GITLET_DIR, "index");
 
     /**
      * Casting the filename of additional files in staging area
@@ -43,6 +40,76 @@ public class Staging implements Serializable {
      */
     public static void clearStaging() {
         new Staging().save();
+    }
+
+    /**
+     * Gets a list of Modifications Not Staged For Commit in gitlet status.
+     */
+    public static List<String> getModifiedFiles(
+            List<String> wdFilesName,
+            HashMap<String, String> trackedMap,
+            HashMap<String, Blob> wdBlobs,
+            HashMap<String, String> additionalMap,
+            HashSet<String> removalSet) {
+        List<String> resFiles = new ArrayList<>();
+        if (wdFilesName == null) {
+            return resFiles;
+        }
+
+        HashSet<String> allFilesName = new HashSet<>(wdFilesName);
+        allFilesName.addAll(trackedMap.keySet());
+        for (String filename : allFilesName) {
+            Blob blob = wdBlobs.get(filename);
+            String trackedSha = trackedMap.get(filename);
+            String stagedSha = additionalMap.get(filename);
+            boolean isInWD = blob != null;
+            boolean isTracked = trackedSha != null;
+            boolean isStaged = stagedSha != null;
+
+            boolean con = false;
+            con |= isInWD && isTracked
+                    && !Objects.equals(trackedSha, blob.getSha1())
+                    && !isStaged;
+            con |= isInWD && isStaged
+                    && !Objects.equals(stagedSha, blob.getSha1());
+            con |= !isInWD && isStaged;
+            con |= !removalSet.contains(filename) && isTracked
+                    && !isInWD;
+            if (con) {
+                resFiles.add(filename);
+            }
+        }
+        return resFiles;
+    }
+
+    /**
+     * Returns a list of untracked files.
+     */
+    public static List<String> getUntrackedFiles(
+            List<String> wdFilesName,
+            HashMap<String, String> trackedMap,
+            HashMap<String, String> additionalMap,
+            HashSet<String> removalSet
+    ) {
+        List<String> resFiles = new ArrayList<>();
+        if (wdFilesName == null) {
+            return resFiles;
+        }
+        HashSet<String> allFiles = new HashSet<>(wdFilesName);
+        allFiles.addAll(removalSet);
+        for (String filename : allFiles) {
+            boolean isTracked = trackedMap.containsKey(filename);
+            boolean isStaged = additionalMap.containsKey(filename);
+            boolean isInWD = wdFilesName.contains(filename);
+
+            boolean con = false;
+            con |= isInWD && !isStaged && !isTracked;
+            con |= removalSet.contains(filename) && isInWD;
+            if (con) {
+                resFiles.add(filename);
+            }
+        }
+        return resFiles;
     }
 
     public HashMap<String, String> getAdditionalMap() {

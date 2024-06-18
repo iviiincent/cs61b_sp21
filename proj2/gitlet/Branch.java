@@ -2,6 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 
 import static gitlet.Utils.*;
 
@@ -37,6 +38,26 @@ public class Branch {
         return join(Repository.HEADS_DIR, branchName);
     }
 
+    public static List<String> getAllBranchesName() {
+        return plainFilenamesIn(Repository.HEADS_DIR);
+    }
+
+    /**
+     * Prints the branch part of the status.
+     */
+    public static void status() {
+        StringBuilder builder = new StringBuilder("=== Branches ===\n");
+        String headBranch = Head.getHeadBranchName();
+        List<String> branchesName = Branch.getAllBranchesName();
+        builder.append("*").append(headBranch).append("\n");
+        for (String branchName : branchesName) {
+            if (!Objects.equals(headBranch, branchName)) {
+                builder.append(branchName).append("\n");
+            }
+        }
+        System.out.println(builder);
+    }
+
     public String getBranchName() {
         return branchName;
     }
@@ -47,10 +68,6 @@ public class Branch {
 
     public void setHeadCommitId(String headCommitId) {
         this.headCommitId = headCommitId;
-    }
-
-    public static List<String> getAllBranchesName() {
-        return plainFilenamesIn(Repository.HEADS_DIR);
     }
 
     /**

@@ -17,24 +17,29 @@ public class Commit implements Serializable {
     /**
      * The format used in the log printing.
      */
-    public static SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
+
     /**
      * The message of this Commit.
      */
     private final String message;
+
     /**
      * The timestamp of this Commit.
      */
     private final Date date;
+
     /**
      * The parent(s) of this Commit
      */
     private final Commit[] parents;
+
     /**
      * The sha1 code of this commit, same as the commit id of this Commit,
      * decided by its other variables.
      */
     private final String commitId;
+
     /**
      * Casts the tracked files' name to their sha1.
      */
@@ -83,9 +88,15 @@ public class Commit implements Serializable {
 
     /**
      * Gets the head commit of given branch.
+     *
+     * @return The head commit of given branch name,
+     * and null if there's no such branch.
      */
     public static Commit getHeadCommit(String branchName) {
         File branchFile = Branch.getBranchFile(branchName);
+        if (!branchFile.isFile()) {
+            return null;
+        }
         String commitId = readContentsAsString(branchFile);
         File lastCommitFile = Commit.getCommitFile(commitId);
         return readObject(lastCommitFile, Commit.class);
@@ -164,8 +175,8 @@ public class Commit implements Serializable {
         System.out.println("commit " + commitId);
         if (parents.length == 2) {
             // This is a merged commit.
-            System.out.println("Merge: " + parents[0].commitId.substring(0, 7) +
-                    " " + parents[1].commitId.substring(0, 7));
+            System.out.println("Merge: " + parents[0].commitId.substring(0, 7)
+                    + " " + parents[1].commitId.substring(0, 7));
         }
         System.out.println("Date: " + dateFormat.format(date));
         System.out.println(message);
