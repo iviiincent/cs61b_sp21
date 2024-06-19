@@ -389,6 +389,16 @@ public class Repository {
         List<String> untrackedFiles = Staging.getUntrackedFiles(
                 wdFilesName, trackedMap, additionalMap, removalSet
         );
+        for (String untrackedFile : untrackedFiles) {
+            File file = join(CWD, untrackedFile);
+            String preSha = trackedMap.get(untrackedFile);
+            String curSha = file.isFile() ? new Blob(file).getSha1() : null;
+            if (curSha != null && !Objects.equals(preSha, curSha)) {
+                System.out.println("There is an untracked file in the way;"
+                        + " delete it, or add and commit it first.");
+                System.exit(0);
+            }
+        }
 
         for (HashMap.Entry<String, String> entry : trackedMap.entrySet()) {
             String filename = entry.getKey();
@@ -417,6 +427,46 @@ public class Repository {
         Branch branch = new Branch(
                 branchName, Commit.getProjectHeadCommit().getCommitId());
         branch.save();
+    }
+
+    /**
+     * Deletes the branch with the given name. This only means to delete
+     * the pointer associated with the branch; it does not mean to delete
+     * all commits that were created under the branch, or anything like
+     * that.
+     */
+    public static void rmBranch(String branchName) {
+        if (Objects.equals(branchName, Head.getHeadBranchName())) {
+            System.out.println("Cannot remove the current branch.");
+            System.exit(0);
+        }
+        File branchFile = Branch.getBranchFile(branchName);
+        if (branchFile == null) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        branchFile.delete();
+    }
+
+    /**
+     * Checks out all the files tracked by the given commit. Removes
+     * tracked files that are not present in that commit. Also moves
+     * the current branch’s head to that commit node. See the intro for
+     * an example of what happens to the head pointer after using reset.
+     * The [commit id] may be abbreviated as for checkout. The staging
+     * area is cleared. The command is essentially checkout of an
+     * arbitrary commit that also changes the current branch head.
+     */
+    public static void reset(String commitId) {
+        /*
+         * If no commit with the given id exists, print "No commit with
+         *  that id exists." If a working file is untracked in the current
+         *  branch and would be overwritten by the reset, print "There is
+         *  an untracked file in the way; delete it, or add and commit it
+         *  first." and exit; perform this check before doing anything
+         * else.
+         */
+
     }
 
     /* Helper functions */

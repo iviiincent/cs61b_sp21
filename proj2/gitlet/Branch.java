@@ -35,7 +35,8 @@ public class Branch {
     }
 
     public static File getBranchFile(String branchName) {
-        return join(Repository.HEADS_DIR, branchName);
+        File file = join(Repository.HEADS_DIR, branchName);
+        return file.isFile() ? file : null;
     }
 
     public static List<String> getAllBranchesName() {

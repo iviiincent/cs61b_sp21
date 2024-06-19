@@ -63,8 +63,19 @@ public class Main {
                 Repository.checkout(args);
                 break;
             case "branch":
+                // gitlet.Main branch [BRANCH NAME]
                 Repository.validArgs(args, 2);
                 Repository.branch(args[1]);
+                break;
+            case "rm-branch":
+                // gitlet.Main rm-branch [BRANCH NAME]
+                Repository.validArgs(args, 2);
+                Repository.rmBranch(args[1]);
+                break;
+            case "reset":
+                // gitlet.main reset [COMMIT ID]
+                Repository.validArgs(args, 2);
+                Repository.reset(args[1]);
                 break;
             default:
                 Repository.receiveInvalidCommand();

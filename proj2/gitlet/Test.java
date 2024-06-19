@@ -2,7 +2,8 @@ package gitlet;
 
 import java.io.File;
 
-import static gitlet.Utils.*;
+import static gitlet.Utils.join;
+import static gitlet.Utils.writeContents;
 
 public class Test {
     public static void main(String[] args) {
@@ -10,18 +11,14 @@ public class Test {
         String filename = "hello.txt";
         File file = join(Repository.CWD, filename);
         writeContents(file, "hello");
+
         Repository.add(filename);
         Repository.commit("created hello.txt");
 
-        Repository.branch("dev");
-        Repository.checkoutBranch("dev");
-
-        writeContents(file, "hello world");
-        Repository.add(filename);
-        Repository.commit("modified hello.txt");
-
-        System.out.println(readContentsAsString(file));
-        Repository.checkoutBranch("master");
-        System.out.println(readContentsAsString(file));
+        String branch = "another-branch";
+        Repository.branch(branch);
+        Repository.checkoutBranch(branch);
+        Repository.rmBranch("master");
+        System.out.println(Branch.getAllBranchesName());
     }
 }
