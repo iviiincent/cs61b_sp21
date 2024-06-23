@@ -73,8 +73,81 @@ Represents the Staging Area, storing files being added and removed.
 - Commit
 - Staging
 
-### gielet log
+### gitlet log
 
 #### Objects involved:
 - Commit
 - Head
+
+### gitlet global-log
+
+#### Objects involved:
+- Commit
+
+### gitlet find MESSAGE
+
+#### Objects involved:
+- Commit
+
+### gitlet status
+
+- Branch
+  - Branch
+  - Head
+- Staged Files
+  - in Staging.additionalMap
+- Removed Files
+  - in Staging.removalSet
+- Modifications Not Staged For Commit
+  - Tracked in the current commit, changed in the working directory, but not staged; or
+  - Staged for addition, but with different contents than in the working directory; or
+  - Staged for addition, but deleted in the working directory; or
+  - Not staged for removal, but tracked in the current commit and deleted from the working directory.
+- Untracked Files
+  - not in Staging
+  - not tracked in the last commit
+
+### gitlet checkout
+
+#### gitlet checkoutFile
+
+##### variables involved:
+- Blob
+- Commit
+
+#### gitlet checkoutBranch
+- Blob
+- Branch
+- Head
+
+### gitlet branch
+
+#### variables involved:
+- Branch
+
+### gitlet rm-branch
+
+#### variables involved:
+- Branch
+
+### gitlet reset
+
+#### variables involved:
+- Branch
+- Head
+- Blob
+
+### gitlet merge
+1. only modified in given branch
+    - changed to the version in the given branch
+1. only modified in current branch 
+    - remain
+1. removed in both branch but in wd
+    - absent
+    - left alone
+    - not tracked nor staged
+1. tracked in both branch with same SHA 
+    - left unchanged
+1. tracked in both commit with different SHA
+1. 
+    

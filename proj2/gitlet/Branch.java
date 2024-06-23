@@ -34,9 +34,11 @@ public class Branch {
         branchFile = join(Repository.HEADS_DIR, branchName);
     }
 
+    /**
+     * Return the file with name [BRANCH NAME], could be not exist.
+     */
     public static File getBranchFile(String branchName) {
-        File file = join(Repository.HEADS_DIR, branchName);
-        return file.isFile() ? file : null;
+        return join(Repository.HEADS_DIR, branchName);
     }
 
     public static List<String> getAllBranchesName() {

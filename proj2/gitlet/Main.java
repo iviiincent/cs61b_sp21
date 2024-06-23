@@ -13,8 +13,7 @@ public class Main {
      */
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("Please enter a command.");
-            System.exit(0);
+            Repository.exit("Please enter a command.");
         }
 
         switch (args[0]) {
@@ -73,9 +72,14 @@ public class Main {
                 Repository.rmBranch(args[1]);
                 break;
             case "reset":
-                // gitlet.main reset [COMMIT ID]
+                // gitlet.Main reset [COMMIT ID]
                 Repository.validArgs(args, 2);
                 Repository.reset(args[1]);
+                break;
+            case "merge":
+                // gitlet.Main merge [BRANCH NAME]
+                Repository.validArgs(args, 2);
+                Repository.merge(args[1]);
                 break;
             default:
                 Repository.receiveInvalidCommand();

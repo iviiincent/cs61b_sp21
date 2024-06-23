@@ -85,7 +85,7 @@ public class Staging implements Serializable {
     /**
      * Returns a list of untracked files.
      */
-    public static List<String> getUntrackedFiles(
+    public static List<String> getUntrackedFilesInStatus(
             List<String> wdFilesName,
             HashMap<String, String> trackedMap,
             HashMap<String, String> additionalMap,
@@ -112,6 +112,13 @@ public class Staging implements Serializable {
         return resFiles;
     }
 
+    /**
+     * @return If this staging objects is empty.
+     */
+    public boolean isEmpty() {
+        return additionalMap.isEmpty() && removalSet.isEmpty();
+    }
+
     public HashMap<String, String> getAdditionalMap() {
         return additionalMap;
     }
@@ -131,7 +138,7 @@ public class Staging implements Serializable {
         String curSha = blob.getSha1();
         if (Objects.equals(stagingSha, curSha)) {
             // no changes in this file
-            System.exit(0);
+            Repository.exit();
         } else if (Objects.equals(commitSha, curSha)) {
             // change back to last commit version
             additionalMap.remove(filename);
@@ -143,9 +150,20 @@ public class Staging implements Serializable {
     }
 
     /**
-     * Removes file from additional if it's there.
-     * Adds to removal and removes the file from working directory if
-     * it's tracked in last commit.
+     * Directly add to additionalMap. Only used when blob file is stored.
+     */
+    public void addExisted(String filename, String sha) {
+        if (Blob.getBlobFile(sha) == null) {
+            throw new NullPointerException("Missing blob file.");
+        }
+        additionalMap.put(filename, sha);
+    }
+
+    /**
+     * Unstage the file if it is currently staged for addition. If the file is
+     * tracked in the current commit, stage it for removal and remove the file
+     * from the working directory if the user has not already done so (do not
+     * remove it unless it is tracked in the current commit).
      */
     public void rmFile(String filename) {
         String sha = additionalMap.remove(filename);
@@ -155,7 +173,7 @@ public class Staging implements Serializable {
             removalSet.add(filename);
             restrictedDelete(filename);
         } else if (sha == null) {
-            System.out.println("No reason to remove the file.");
+            Repository.exit("No reason to remove the file.");
         }
     }
 

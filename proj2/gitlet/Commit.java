@@ -17,7 +17,8 @@ public class Commit implements Serializable {
     /**
      * The format used in the log printing.
      */
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(
+            "EEE MMM d HH:mm:ss yyyy Z");
 
     /**
      * The message of this Commit.
@@ -45,6 +46,7 @@ public class Commit implements Serializable {
      */
     private final HashMap<String, String> trackedMap;
 
+
     /**
      * Creates a Commit by given MESSAGE and PARENTS.
      * Merge the trackedMap of last commit and staging area
@@ -70,8 +72,7 @@ public class Commit implements Serializable {
         HashSet<String> removal = staging.getRemovalSet();
 
         if (parents.length != 0 && additional.isEmpty() && removal.isEmpty()) {
-            System.out.println("No changes added to the commit.");
-            System.exit(0);
+            Repository.exit("No changes added to the commit.");
         }
 
         trackedMap.putAll(additional);
@@ -112,14 +113,26 @@ public class Commit implements Serializable {
     /**
      * Gets one commit with given commit id.
      *
-     * @return The commit with correct commit id, null if there is no such commit.
+     * @param commitId Its length can be 40, or less than 40.
+     * @return The commit with correct commit id,
+     * and null if there is no such commit.
      */
     public static Commit getCommit(String commitId) {
-        File file = join(Repository.COMMITS_DIR, commitId);
-        if (file.isFile()) {
-            return readObject(file, Commit.class);
+        int len = commitId.length();
+        if (len < UID_LENGTH) { // short commit id
+            List<String> ids = plainFilenamesIn(Repository.COMMITS_DIR);
+            if (ids == null) {
+                throw new NullPointerException("0 commit");
+            }
+            for (String id : ids) {
+                if (Objects.equals(id.substring(0, len), commitId)) {
+                    File file = join(Repository.COMMITS_DIR, id);
+                    return readObject(file, Commit.class);
+                }
+            }
         }
-        return null;
+        File file = join(Repository.COMMITS_DIR, commitId);
+        return file.isFile() ? readObject(file, Commit.class) : null;
     }
 
     /**
@@ -135,6 +148,64 @@ public class Commit implements Serializable {
             commits.add(getCommit(commitId));
         }
         return commits;
+    }
+
+    /**
+     * Return if PARENT is an ancestor of CHILD.
+     *
+     * @param child Must not be null.
+     */
+    public static boolean isAncestor(Commit ancestor, Commit child) {
+        if (child == null) {
+            throw new NullPointerException("Commit child must not be null.");
+        }
+
+        if (ancestor == null) {
+            return false;
+        } else if (ancestor == child) {
+            return true;
+        }
+
+        for (Commit commit : ancestor.parents) {
+            if (isAncestor(commit, child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Assert that the relationship between given two commits is ancestor and
+     * child, return the split commit of those.
+     */
+    public static Commit getSplitCommit(Commit a, Commit b) {
+        if (a == null || b == null) {
+            throw new NullPointerException("There's no split commit.");
+        } else if (Objects.equals(a, b)) {
+            return a;
+        }
+
+        for (Commit commit : a.parents) {
+            Commit res = getSplitCommit(commit, b);
+            if (res != null) {
+                return res;
+            }
+        }
+        for (Commit commit : b.parents) {
+            Commit res = getSplitCommit(a, commit);
+            if (res != null) {
+                return res;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Commit) {
+            return ((Commit) obj).commitId.equals(commitId);
+        }
+        return false;
     }
 
     public HashMap<String, String> getTrackedMap() {
@@ -155,6 +226,11 @@ public class Commit implements Serializable {
 
     public Commit[] getParents() {
         return parents;
+    }
+
+    @Override
+    public int hashCode() {
+        return commitId.hashCode();
     }
 
     /**
@@ -178,7 +254,7 @@ public class Commit implements Serializable {
             System.out.println("Merge: " + parents[0].commitId.substring(0, 7)
                     + " " + parents[1].commitId.substring(0, 7));
         }
-        System.out.println("Date: " + dateFormat.format(date));
+        System.out.println("Date: " + DATE_FORMAT.format(date));
         System.out.println(message);
         System.out.println();
     }

@@ -1,10 +1,7 @@
 package gitlet;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -66,19 +63,16 @@ public class Repository {
          * exists in the current directory.
          */
         if (GITLET_DIR.isDirectory()) {
-            System.out.println("A Gitlet version-control system already " + "exists in the current directory.");
-            System.exit(0);
+            exit("A Gitlet version-control system already "
+                    + "exists in the current directory.");
         }
 
         if (!GITLET_DIR.mkdir() || !OBJECTS_DIR.mkdir()
                 || !COMMITS_DIR.mkdir() || !HEADS_DIR.mkdir()) {
-            System.out.println("mkdir failed.");
-            System.exit(0);
+            exit("mkdir failed.");
         }
 
-
-        Staging staging = new Staging();
-        staging.save();
+        new Staging().save();
         Head.setHead("master");
 
         Commit initCommit = new Commit("initial commit");
@@ -110,8 +104,7 @@ public class Repository {
         checkInitialized();
         File addedFile = join(CWD, filename);
         if (!addedFile.isFile()) {
-            System.out.println("File does not exist.");
-            System.exit(0);
+            exit("File does not exist.");
         }
 
         Blob blob = new Blob(addedFile);
@@ -156,13 +149,13 @@ public class Repository {
          */
         checkInitialized();
         if (message.isEmpty()) {
-            System.out.println("Please enter a commit message.");
-            System.exit(0);
+            exit("Please enter a commit message.");
         }
         Commit lastCommit = Commit.getProjectHeadCommit();
 
         Commit commit = new Commit(message, lastCommit);
-        Branch branch = new Branch(Head.getHeadBranchName(), commit.getCommitId());
+        Branch branch = new Branch(
+                Head.getHeadBranchName(), commit.getCommitId());
 
         branch.save();
         commit.save();
@@ -178,11 +171,6 @@ public class Repository {
      * current commit).
      */
     public static void rm(String filename) {
-        /*
-         * Failure cases: If the file is neither staged nor tracked by the
-         *  head commit, print the error message "No reason to remove the
-         *  file."
-         */
         checkInitialized();
         Staging staging = Staging.getCurStaging();
         staging.rmFile(filename);
@@ -261,13 +249,15 @@ public class Repository {
         HashMap<String, String> additionalMap = staging.getAdditionalMap();
         HashSet<String> removalSet = staging.getRemovalSet();
         HashMap<String, Blob> wdBlobs = new HashMap<>();
-        if (wdFilesName != null) {
-            for (String filename : wdFilesName) {
-                wdBlobs.put(
-                        filename,
-                        new Blob(join(Repository.CWD, filename)));
-            }
+        if (wdFilesName == null) {
+            throw new NullPointerException("Failed to get plain files in CWD");
         }
+        for (String filename : wdFilesName) {
+            wdBlobs.put(
+                    filename,
+                    new Blob(join(Repository.CWD, filename)));
+        }
+
 
         StringBuilder builder = new StringBuilder();
         builder.append("=== Staged Files ===\n");
@@ -289,7 +279,7 @@ public class Repository {
         }
 
         builder.append("\n=== Untracked Files ===\n");
-        List<String> untrackedFiles = Staging.getUntrackedFiles(
+        List<String> untrackedFiles = Staging.getUntrackedFilesInStatus(
                 wdFilesName, trackedMap, additionalMap, removalSet);
         for (String filename : untrackedFiles) {
             builder.append(filename).append("\n");
@@ -312,7 +302,232 @@ public class Repository {
             // gitlet.Main checkout [branch name]
             checkoutBranch(args[1]);
         } else {
-            receiveInvalidCommand();
+            exit("Incorrect operands.");
+        }
+    }
+
+    /**
+     * Creates a new branch with the given name, and points it at the
+     * current head commit. A branch is nothing more than a name for
+     * a reference (a SHA-1 identifier) to a commit node. This command
+     * does NOT immediately switch to the newly created branch (just as
+     * in real Git).
+     */
+    public static void branch(String branchName) {
+        checkInitialized();
+        List<String> branchNames = Branch.getAllBranchesName();
+        if (branchNames.contains(branchName)) {
+            exit("A branch with that name already exists.");
+        }
+        Branch branch = new Branch(
+                branchName, Commit.getProjectHeadCommit().getCommitId());
+        branch.save();
+    }
+
+    /**
+     * Deletes the branch with the given name. This only means to delete
+     * the pointer associated with the branch; it does not mean to delete
+     * all commits that were created under the branch, or anything like
+     * that.
+     */
+    public static void rmBranch(String branchName) {
+        checkInitialized();
+        if (Objects.equals(branchName, Head.getHeadBranchName())) {
+            exit("Cannot remove the current branch.");
+        }
+        File branchFile = Branch.getBranchFile(branchName);
+        if (!branchFile.isFile()) {
+            exit("A branch with that name does not exist.");
+        }
+        branchFile.delete();
+    }
+
+    /**
+     * Checks out all the files tracked by the given commit. Removes
+     * tracked files that are not present in that commit. Also moves
+     * the current branch’s head to that commit node. See the intro for
+     * an example of what happens to the head pointer after using reset.
+     * The [commit id] may be abbreviated as for checkout. The staging
+     * area is cleared. The command is essentially checkout of an
+     * arbitrary commit that also changes the current branch head.
+     */
+    public static void reset(String commitId) {
+        checkInitialized();
+        Commit commit = Commit.getCommit(commitId);
+        if (commit == null) {
+            exit("No commit with that id exists.");
+        }
+        checkoutCommit(commit);
+
+        String branchName = Head.getHeadBranchName();
+        File branchFile = Branch.getBranchFile(branchName);
+        writeContents(branchFile, commitId);
+        new Staging().save();
+    }
+
+    /**
+     * Merges files from the given branch into the current branch.
+     */
+    public static void merge(String branchName) {
+        checkInitialized();
+        Staging staging = Staging.getCurStaging();
+        Commit curCommit = Commit.getProjectHeadCommit();
+        if (!staging.isEmpty()) {
+            exit("You have uncommitted changes.");
+        }
+        List<String> branchesName = Branch.getAllBranchesName();
+        if (!branchesName.contains(branchName)) {
+            exit("A branch with that name does not exist.");
+        }
+        String curBranchName = Head.getHeadBranchName();
+        if (Objects.equals(curBranchName, branchName)) {
+            exit("Cannot merge a branch with itself.");
+        }
+        String givenCommitId =
+                readContentsAsString(Branch.getBranchFile(branchName));
+        Commit givenCommit = Commit.getCommit(givenCommitId);
+        checkOverwritten(givenCommit);
+
+        if (Commit.isAncestor(givenCommit, curCommit)) {
+            exit("Given branch is an ancestor of the current branch.");
+        }
+        if (Commit.isAncestor(curCommit, givenCommit)) {
+            exit("Current branch fast-forwarded.");
+        }
+
+        Commit splitCommit = Commit.getSplitCommit(givenCommit, curCommit);
+        HashMap<String, String> splitTrackedFiles = splitCommit.getTrackedMap();
+        HashMap<String, String> curTrackedFiles = curCommit.getTrackedMap();
+        HashMap<String, String> givenTrackedFiles = givenCommit.getTrackedMap();
+        HashSet<String> allFiles = new HashSet<>(splitTrackedFiles.keySet());
+        allFiles.addAll(curTrackedFiles.keySet());
+        allFiles.addAll(givenTrackedFiles.keySet());
+
+        for (String filename : allFiles) {
+            File file = join(CWD, filename);
+            String curSha = curTrackedFiles.get(filename);
+            String givenSha = givenTrackedFiles.get(filename);
+            String splitSha = splitTrackedFiles.get(filename);
+            boolean isConflict = isConflict(curSha, givenSha, splitSha);
+            if (isConflict) {
+                File curBlob = Blob.getBlobFile(curSha);
+                File givenBlob = Blob.getBlobFile(givenSha);
+                saveConflict(curBlob, givenBlob, file);
+                System.out.println("Encountered a merge conflict.");
+            } else if (splitSha != null) { // tracked in the split commit
+                boolean isModifiedCur = !Objects.equals(splitSha, curSha);
+                boolean isModifiedGiven = !Objects.equals(splitSha, givenSha);
+                if (curSha != null && givenSha != null
+                        && isModifiedGiven && !isModifiedCur) {
+                    File blobFile = Blob.getBlobFile(givenSha);
+                    writeContents(file, readContents(blobFile));
+                    staging.addExisted(filename, givenSha);
+                } else if (curSha != null && givenSha == null
+                        && !isModifiedCur) {
+                    staging.rmFile(filename);
+                }
+            } else {
+                boolean isTrackedCur = curSha != null;
+                boolean isTrackedGiven = givenSha != null;
+                if (isTrackedGiven && !isTrackedCur) {
+                    File blobFile = Blob.getBlobFile(givenSha);
+                    writeContents(file, readContents(blobFile));
+                    staging.addExisted(filename, givenSha);
+                }
+            }
+        }
+        staging.save();
+        commit("Merged " + branchName + " into " + curBranchName + ".");
+    }
+
+    /**
+     * Return if there will be a conflict or not according to SHA
+     * in current branch, given branch, and split commit.
+     *
+     * @return True if there will be a conflict, otherwise false.
+     */
+    private static boolean isConflict(
+            String curSha, String givenSha, String splitSha) {
+        boolean res = false;
+        res |=
+                curSha != null && givenSha != null
+                        && !Objects.equals(curSha, givenSha);
+        res |=
+                splitSha != null
+                        && ((curSha != null
+                        && !Objects.equals(curSha, splitSha)
+                        && givenSha == null)
+                        || (givenSha != null
+                        && !Objects.equals(givenSha, splitSha)
+                        && curSha == null));
+        res |=
+                splitSha == null && curSha != null && givenSha != null
+                        && !Objects.equals(curSha, givenSha);
+        return res;
+    }
+
+
+    /* Helper functions */
+
+    /**
+     * Checks if the number of ARGS equals to VALID NUMS.
+     * Quits if not valid.
+     *
+     * @param validNums Valid numbers of arguments.
+     *                  Can be more than one valid number.
+     */
+    public static void validArgs(String[] args, int... validNums) {
+        for (int n : validNums) {
+            if (args.length == n) {
+                return;
+            }
+        }
+        exit("Incorrect operands.");
+    }
+
+    /**
+     * Has to run this when command is invalid.
+     */
+    public static void receiveInvalidCommand() {
+        exit("No command with that name exists.");
+    }
+
+    /**
+     * Quits when it's not initialized yet, otherwise continues to run.
+     */
+    public static void checkInitialized() {
+        if (!Repository.GITLET_DIR.exists()) {
+            exit("Not in an initialized Gitlet directory.");
+        }
+    }
+
+    /**
+     * Quits if any files which is untracked in current branch, and
+     * would be rewritten in given commit.
+     *
+     * @param commit Must not be null.
+     */
+    public static void checkOverwritten(Commit commit) {
+        if (commit == null) {
+            throw new NullPointerException("Given commit must not be null.");
+        }
+        List<String> untrackedFiles = getUntrackedFiles();
+        List<String> wdFilesName = plainFilenamesIn(CWD);
+        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        if (wdFilesName == null) {
+            throw new NullPointerException(
+                    "Gets null when requiring plain files.");
+        }
+
+        for (String untrackedFile : untrackedFiles) {
+            File file = join(CWD, untrackedFile);
+            String preSha = trackedMap.get(untrackedFile);
+            String curSha = file.isFile()
+                    ? new Blob(file).getSha1() : null;
+            if (curSha != null && !Objects.equals(preSha, curSha)) {
+                exit("There is an untracked file in the way;"
+                        + " delete it, or add and commit it first.");
+            }
         }
     }
 
@@ -327,14 +542,12 @@ public class Repository {
     public static void checkoutFile(String commitId, String filename) {
         Commit commit = Commit.getCommit(commitId);
         if (commit == null) {
-            System.out.println("No commit with that id exists.");
-            System.exit(0);
+            exit("No commit with that id exists.");
         }
         HashMap<String, String> trackedMap = commit.getTrackedMap();
         String trackedSha = trackedMap.get(filename);
         if (trackedSha == null) {
-            System.out.println("File does not exist in that commit.");
-            System.exit(0);
+            exit("File does not exist in that commit.");
         }
         File blobFile = Blob.getBlobFile(trackedSha);
         File wroteFile = join(CWD, filename);
@@ -354,8 +567,6 @@ public class Repository {
         checkoutFile(commitId, filename);
     }
 
-    // TODO: not checked yet
-
     /**
      * gitlet.Main checkout [branch name]
      * <p>
@@ -371,138 +582,88 @@ public class Repository {
     public static void checkoutBranch(String branchName) {
         checkInitialized();
         if (Objects.equals(Head.getHeadBranchName(), branchName)) {
-            System.out.println("No need to checkout the current branch.");
-            System.exit(0);
+            exit("No need to checkout the current branch.");
         }
-
         Commit commit = Commit.getHeadCommit(branchName);
         if (commit == null) {
-            System.out.println("No such branch exists.");
-            System.exit(0);
+            exit("No such branch exists.");
         }
-
-        Staging staging = Staging.getCurStaging();
-        List<String> wdFilesName = plainFilenamesIn(CWD);
-        HashMap<String, String> trackedMap = commit.getTrackedMap();
-        HashMap<String, String> additionalMap = staging.getAdditionalMap();
-        HashSet<String> removalSet = staging.getRemovalSet();
-        List<String> untrackedFiles = Staging.getUntrackedFiles(
-                wdFilesName, trackedMap, additionalMap, removalSet
-        );
-        for (String untrackedFile : untrackedFiles) {
-            File file = join(CWD, untrackedFile);
-            String preSha = trackedMap.get(untrackedFile);
-            String curSha = file.isFile() ? new Blob(file).getSha1() : null;
-            if (curSha != null && !Objects.equals(preSha, curSha)) {
-                System.out.println("There is an untracked file in the way;"
-                        + " delete it, or add and commit it first.");
-                System.exit(0);
-            }
-        }
-
-        for (HashMap.Entry<String, String> entry : trackedMap.entrySet()) {
-            String filename = entry.getKey();
-            File writtenFile = join(CWD, filename);
-            File blobFile = Blob.getBlobFile(entry.getValue());
-            writeContents(writtenFile, readContents(blobFile));
-        }
+        checkoutCommit(commit);
 
         Head.setHead(branchName);
         Staging.clearStaging();
     }
 
     /**
-     * Creates a new branch with the given name, and points it at the
-     * current head commit. A branch is nothing more than a name for
-     * a reference (a SHA-1 identifier) to a commit node. This command
-     * does NOT immediately switch to the newly created branch (just as
-     * in real Git).
-     */
-    public static void branch(String branchName) {
-        List<String> branchNames = Branch.getAllBranchesName();
-        if (branchNames.contains(branchName)) {
-            System.out.println("A branch with that name already exists.");
-            System.exit(0);
-        }
-        Branch branch = new Branch(
-                branchName, Commit.getProjectHeadCommit().getCommitId());
-        branch.save();
-    }
-
-    /**
-     * Deletes the branch with the given name. This only means to delete
-     * the pointer associated with the branch; it does not mean to delete
-     * all commits that were created under the branch, or anything like
-     * that.
-     */
-    public static void rmBranch(String branchName) {
-        if (Objects.equals(branchName, Head.getHeadBranchName())) {
-            System.out.println("Cannot remove the current branch.");
-            System.exit(0);
-        }
-        File branchFile = Branch.getBranchFile(branchName);
-        if (branchFile == null) {
-            System.out.println("A branch with that name does not exist.");
-            System.exit(0);
-        }
-        branchFile.delete();
-    }
-
-    /**
-     * Checks out all the files tracked by the given commit. Removes
-     * tracked files that are not present in that commit. Also moves
-     * the current branch’s head to that commit node. See the intro for
-     * an example of what happens to the head pointer after using reset.
-     * The [commit id] may be abbreviated as for checkout. The staging
-     * area is cleared. The command is essentially checkout of an
-     * arbitrary commit that also changes the current branch head.
-     */
-    public static void reset(String commitId) {
-        /*
-         * If no commit with the given id exists, print "No commit with
-         *  that id exists." If a working file is untracked in the current
-         *  branch and would be overwritten by the reset, print "There is
-         *  an untracked file in the way; delete it, or add and commit it
-         *  first." and exit; perform this check before doing anything
-         * else.
-         */
-
-    }
-
-    /* Helper functions */
-
-    /**
-     * Checks if the number of ARGS equals to VALID NUMS.
-     * Quits if not valid.
+     * Changes current working directory to given commit.
      *
-     * @param validNums Valid numbers of arguments.
-     *                  Can be more than one valid number.
+     * @param commit Must not be null.
      */
-    public static void validArgs(String[] args, int... validNums) {
-        for (int n : validNums) {
-            if (args.length == n) {
-                return;
-            }
+    public static void checkoutCommit(Commit commit) {
+        if (commit == null) {
+            throw new NullPointerException("Given commit must not be null.");
         }
-        System.out.println("Incorrect operands.");
-        System.exit(0);
+        checkOverwritten(commit);
+
+        List<String> wdFilesName = plainFilenamesIn(CWD);
+        if (wdFilesName == null) {
+            throw new NullPointerException();
+        }
+        for (String filename : wdFilesName) {
+            restrictedDelete(filename);
+        }
+
+        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        for (HashMap.Entry<String, String> entry : trackedMap.entrySet()) {
+            String filename = entry.getKey();
+            String sha = entry.getValue();
+            File writtenFile = join(CWD, filename);
+            File blobFile = Blob.getBlobFile(sha);
+            writeContents(writtenFile, readContents(blobFile));
+        }
     }
 
     /**
-     * Has to run this when command is invalid.
+     * Asserts that CURRENT and GIVEN are files having conflict, save the
+     * info of the conflict to FILE.
      */
-    public static void receiveInvalidCommand() {
-        System.out.println("No command with that name exists.");
-        System.exit(0);
+    public static void saveConflict(File current, File given, File file) {
+        StringBuilder builder = new StringBuilder("<<<<<<< HEAD\n");
+        if (current != null && current.isFile()) {
+            builder.append(readContentsAsString(current));
+        }
+        builder.append("=======");
+        if (current != null && given.isFile()) {
+            builder.append(readContentsAsString(given));
+        }
+        builder.append(">>>>>>>\n");
+        writeContents(file, builder);
     }
 
     /**
-     * Quits when it's not initialized yet, otherwise continues to run.
+     * Gets a list of untracked files for current branch.
      */
-    public static void checkInitialized() {
-        if (!Repository.GITLET_DIR.exists()) {
-            System.out.println("Not in an initialized Gitlet directory.");
-            System.exit(0);
+    public static List<String> getUntrackedFiles() {
+        List<String> wdFiles = plainFilenamesIn(CWD);
+        Commit lastCommit = Commit.getProjectHeadCommit();
+        Staging staging = Staging.getCurStaging();
+        if (wdFiles == null) {
+            throw new NullPointerException();
         }
+
+        List<String> untrackedFiles = new ArrayList<>(wdFiles);
+        untrackedFiles.removeAll(lastCommit.getTrackedMap().keySet());
+        untrackedFiles.removeAll(staging.getAdditionalMap().keySet());
+        untrackedFiles.addAll(staging.getRemovalSet());
+        return untrackedFiles;
+    }
+
+    public static void exit(String message) {
+        System.out.println(message);
+        exit();
+    }
+
+    public static void exit() {
+        System.exit(0);
     }
 }
