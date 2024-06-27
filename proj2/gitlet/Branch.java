@@ -61,6 +61,14 @@ public class Branch {
         System.out.println(builder);
     }
 
+    /**
+     * Returns if there's a branch with given name.
+     */
+    public static boolean isExist(String branchName) {
+        File file = getBranchFile(branchName);
+        return file.isFile();
+    }
+
     public String getBranchName() {
         return branchName;
     }

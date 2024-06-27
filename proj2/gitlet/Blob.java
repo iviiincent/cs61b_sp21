@@ -12,7 +12,7 @@ import static gitlet.Utils.*;
  *
  * @author Vincent Ma
  */
-public class Blob implements Serializable, Dumpable {
+public class Blob implements Serializable {
     /**
      * The Blob file.
      */
@@ -44,6 +44,17 @@ public class Blob implements Serializable, Dumpable {
         return file.isFile() ? file : null;
     }
 
+    /**
+     * Replaces the content of file with given name, to the file with given sha.
+     *
+     * @param sha1 Asserts that there is such file with given sha1.
+     */
+    public static void loadBlob(String sha1, String filename) {
+        File blobFile = getBlobFile(sha1);
+        File file = join(Repository.CWD, filename);
+        writeContents(file, readContents(blobFile));
+    }
+
     public File getBlobFile() {
         return blobFile;
     }
@@ -63,17 +74,4 @@ public class Blob implements Serializable, Dumpable {
         writeContents(blobFile, readContents(storedFile));
     }
 
-    /**
-     * Print useful information about this object on System.out.
-     */
-    @Override
-    public void dump() {
-        System.out.println("SHA1");
-        System.out.println(sha1);
-        System.out.println("end of SHA");
-
-        System.out.println("Content of file");
-        System.out.println(readContentsAsString(storedFile));
-        System.out.println("end of Content of File");
-    }
 }

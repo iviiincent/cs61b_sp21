@@ -75,7 +75,7 @@ public class Repository {
         new Staging().save();
         Head.setHead("master");
 
-        Commit initCommit = new Commit("initial commit");
+        Commit initCommit = Commit.INIT_COMMIT;
         initCommit.save();
 
         Branch branch = new Branch("master", initCommit.getCommitId());
@@ -110,7 +110,7 @@ public class Repository {
         Blob blob = new Blob(addedFile);
 
         Commit lastCommit = Commit.getProjectHeadCommit();
-        HashMap<String, String> trackedMap = lastCommit.getTrackedMap();
+        Map<String, String> trackedMap = lastCommit.getTrackedMap();
         String commitSha = trackedMap.get(filename);
 
         Staging staging = Staging.getCurStaging();
@@ -137,7 +137,7 @@ public class Repository {
      *
      * @return The id of the created commit.
      */
-    public static String commit(String message) {
+    public static void commit(String message) {
         /*
          * Failure cases: If no files have been staged, abort. Print the
          *  message "No changes added to the commit." Every commit must
@@ -160,7 +160,6 @@ public class Repository {
         branch.save();
         commit.save();
         Staging.clearStaging();
-        return commit.getCommitId();
     }
 
     /**
@@ -244,11 +243,11 @@ public class Repository {
 
         List<String> wdFilesName = plainFilenamesIn(CWD);
         Staging staging = Staging.getCurStaging();
-        HashMap<String, String> trackedMap =
+        Map<String, String> trackedMap =
                 Commit.getProjectHeadCommit().getTrackedMap();
-        HashMap<String, String> additionalMap = staging.getAdditionalMap();
-        HashSet<String> removalSet = staging.getRemovalSet();
-        HashMap<String, Blob> wdBlobs = new HashMap<>();
+        Map<String, String> additionalMap = staging.getAdditionalMap();
+        Set<String> removalSet = staging.getRemovalSet();
+        Map<String, Blob> wdBlobs = new TreeMap<>();
         if (wdFilesName == null) {
             throw new NullPointerException("Failed to get plain files in CWD");
         }
@@ -275,7 +274,11 @@ public class Repository {
                 wdFilesName, trackedMap, wdBlobs, additionalMap, removalSet
         );
         for (String filename : modifiedFiles) {
-            builder.append(filename).append("\n");
+            if (wdFilesName.contains(filename)) {
+                builder.append(filename).append(" (modified)\n");
+            } else {
+                builder.append(filename).append(" (deleted)\n");
+            }
         }
 
         builder.append("\n=== Untracked Files ===\n");
@@ -375,94 +378,89 @@ public class Repository {
         if (!staging.isEmpty()) {
             exit("You have uncommitted changes.");
         }
-        List<String> branchesName = Branch.getAllBranchesName();
-        if (!branchesName.contains(branchName)) {
+        if (!Branch.isExist(branchName)) {
             exit("A branch with that name does not exist.");
         }
         String curBranchName = Head.getHeadBranchName();
         if (Objects.equals(curBranchName, branchName)) {
             exit("Cannot merge a branch with itself.");
         }
+
         String givenCommitId =
                 readContentsAsString(Branch.getBranchFile(branchName));
         Commit givenCommit = Commit.getCommit(givenCommitId);
         checkOverwritten(givenCommit);
 
-        if (Commit.isAncestor(givenCommit, curCommit)) {
+        Commit splitCommit = Commit.getSplitCommit(givenCommit, curCommit);
+        if (Objects.equals(splitCommit, givenCommit)) {
             exit("Given branch is an ancestor of the current branch.");
-        }
-        if (Commit.isAncestor(curCommit, givenCommit)) {
+        } else if (Objects.equals(splitCommit, curCommit)) {
+            checkoutCommit(givenCommit);
             exit("Current branch fast-forwarded.");
         }
 
-        Commit splitCommit = Commit.getSplitCommit(givenCommit, curCommit);
-        HashMap<String, String> splitTrackedFiles = splitCommit.getTrackedMap();
-        HashMap<String, String> curTrackedFiles = curCommit.getTrackedMap();
-        HashMap<String, String> givenTrackedFiles = givenCommit.getTrackedMap();
-        HashSet<String> allFiles = new HashSet<>(splitTrackedFiles.keySet());
+        Map<String, String> splitTrackedFiles = splitCommit.getTrackedMap();
+        Map<String, String> curTrackedFiles = curCommit.getTrackedMap();
+        Map<String, String> givenTrackedFiles = givenCommit.getTrackedMap();
+        Set<String> allFiles = new TreeSet<>(splitTrackedFiles.keySet());
         allFiles.addAll(curTrackedFiles.keySet());
         allFiles.addAll(givenTrackedFiles.keySet());
 
         for (String filename : allFiles) {
-            File file = join(CWD, filename);
             String curSha = curTrackedFiles.get(filename);
             String givenSha = givenTrackedFiles.get(filename);
             String splitSha = splitTrackedFiles.get(filename);
-            boolean isConflict = isConflict(curSha, givenSha, splitSha);
-            if (isConflict) {
-                File curBlob = Blob.getBlobFile(curSha);
-                File givenBlob = Blob.getBlobFile(givenSha);
-                saveConflict(curBlob, givenBlob, file);
+            if (isConflict(curSha, givenSha, splitSha)) {
+                saveConflict(curSha, givenSha, filename);
                 System.out.println("Encountered a merge conflict.");
-            } else if (splitSha != null) { // tracked in the split commit
+            } else if (splitSha != null) {
                 boolean isModifiedCur = !Objects.equals(splitSha, curSha);
                 boolean isModifiedGiven = !Objects.equals(splitSha, givenSha);
-                if (curSha != null && givenSha != null
-                        && isModifiedGiven && !isModifiedCur) {
-                    File blobFile = Blob.getBlobFile(givenSha);
-                    writeContents(file, readContents(blobFile));
-                    staging.addExisted(filename, givenSha);
-                } else if (curSha != null && givenSha == null
-                        && !isModifiedCur) {
+                if (!isModifiedCur && givenSha != null && isModifiedGiven) {
+                    Blob.loadBlob(givenSha, filename);
+                    staging.addExistedFile(filename, givenSha);
+                } else if (!isModifiedCur && givenSha == null) {
                     staging.rmFile(filename);
                 }
             } else {
-                boolean isTrackedCur = curSha != null;
-                boolean isTrackedGiven = givenSha != null;
-                if (isTrackedGiven && !isTrackedCur) {
-                    File blobFile = Blob.getBlobFile(givenSha);
-                    writeContents(file, readContents(blobFile));
-                    staging.addExisted(filename, givenSha);
+                if (curSha == null && givenSha != null) {
+                    Blob.loadBlob(givenSha, filename);
+                    staging.addExistedFile(filename, givenSha);
                 }
             }
         }
         staging.save();
-        commit("Merged " + branchName + " into " + curBranchName + ".");
+
+        String info = "Merged " + branchName + " into " + curBranchName + ".";
+        mergeCommit(info, curCommit, givenCommit);
     }
 
     /**
-     * Return if there will be a conflict or not according to SHA
-     * in current branch, given branch, and split commit.
+     * Any files modified in different ways in the current and given branches
+     * are in conflict. “Modified in different ways” can mean that the contents
+     * of both are changed and different from other,
+     * or the contents of one are changed and the other file is deleted,
+     * or the file was absent at the split point and has different contents in
+     * the given and current branches.
      *
      * @return True if there will be a conflict, otherwise false.
      */
     private static boolean isConflict(
             String curSha, String givenSha, String splitSha) {
+        boolean dif = !Objects.equals(curSha, givenSha);
+        boolean curDif = !Objects.equals(curSha, splitSha);
+        boolean givenDif = !Objects.equals(givenSha, splitSha);
+
         boolean res = false;
-        res |=
-                curSha != null && givenSha != null
-                        && !Objects.equals(curSha, givenSha);
-        res |=
-                splitSha != null
-                        && ((curSha != null
-                        && !Objects.equals(curSha, splitSha)
-                        && givenSha == null)
-                        || (givenSha != null
-                        && !Objects.equals(givenSha, splitSha)
-                        && curSha == null));
-        res |=
-                splitSha == null && curSha != null && givenSha != null
-                        && !Objects.equals(curSha, givenSha);
+        res |= splitSha != null
+                && curSha != null && givenSha != null
+                && dif && curDif && givenDif;
+        res |= splitSha != null
+                && (curSha != null && curDif && givenSha == null
+                || curSha == null && givenSha != null && givenDif);
+        res |= splitSha == null
+                && curSha != null && givenSha != null && dif;
+
         return res;
     }
 
@@ -513,7 +511,7 @@ public class Repository {
         }
         List<String> untrackedFiles = getUntrackedFiles();
         List<String> wdFilesName = plainFilenamesIn(CWD);
-        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        Map<String, String> trackedMap = commit.getTrackedMap();
         if (wdFilesName == null) {
             throw new NullPointerException(
                     "Gets null when requiring plain files.");
@@ -544,14 +542,12 @@ public class Repository {
         if (commit == null) {
             exit("No commit with that id exists.");
         }
-        HashMap<String, String> trackedMap = commit.getTrackedMap();
+        Map<String, String> trackedMap = commit.getTrackedMap();
         String trackedSha = trackedMap.get(filename);
         if (trackedSha == null) {
             exit("File does not exist in that commit.");
         }
-        File blobFile = Blob.getBlobFile(trackedSha);
-        File wroteFile = join(CWD, filename);
-        writeContents(wroteFile, readContents(blobFile));
+        Blob.loadBlob(trackedSha, filename);
     }
 
     /**
@@ -613,31 +609,45 @@ public class Repository {
             restrictedDelete(filename);
         }
 
-        HashMap<String, String> trackedMap = commit.getTrackedMap();
-        for (HashMap.Entry<String, String> entry : trackedMap.entrySet()) {
+        Map<String, String> trackedMap = commit.getTrackedMap();
+        for (Map.Entry<String, String> entry : trackedMap.entrySet()) {
             String filename = entry.getKey();
             String sha = entry.getValue();
-            File writtenFile = join(CWD, filename);
-            File blobFile = Blob.getBlobFile(sha);
-            writeContents(writtenFile, readContents(blobFile));
+            Blob.loadBlob(sha, filename);
         }
     }
 
+    public static void mergeCommit(
+            String message, Commit curCommit, Commit givenCommit) {
+        Commit commit = new Commit(message, curCommit, givenCommit);
+        Branch branch = new Branch(
+                Head.getHeadBranchName(), commit.getCommitId());
+
+        branch.save();
+        commit.save();
+        Staging.clearStaging();
+    }
+
     /**
-     * Asserts that CURRENT and GIVEN are files having conflict, save the
-     * info of the conflict to FILE.
+     * Asserts that files with given sha have conflict, then saves the
+     * info of the conflict to file with filename. curSha and givenSha should
+     * be null while the file is not tracked in the branch.
      */
-    public static void saveConflict(File current, File given, File file) {
+    public static void saveConflict(
+            String curSha, String givenSha, String filename) {
+        File current = curSha != null ? Blob.getBlobFile(curSha) : null;
+        File given = givenSha != null ? Blob.getBlobFile(givenSha) : null;
+        File file = join(CWD, filename);
         StringBuilder builder = new StringBuilder("<<<<<<< HEAD\n");
         if (current != null && current.isFile()) {
             builder.append(readContentsAsString(current));
         }
-        builder.append("=======");
-        if (current != null && given.isFile()) {
+        builder.append("=======\n");
+        if (given != null && given.isFile()) {
             builder.append(readContentsAsString(given));
         }
         builder.append(">>>>>>>\n");
-        writeContents(file, builder);
+        writeContents(file, builder.toString());
     }
 
     /**
@@ -665,5 +675,17 @@ public class Repository {
 
     public static void exit() {
         System.exit(0);
+    }
+
+    /**
+     * Returns if a file is saved with conflict info.
+     */
+    public static boolean isConflictFile(String filename) {
+        File file = join(CWD, filename);
+        if (!file.isFile()) {
+            return false;
+        }
+        String head = "<<<<<<< HEAD\n";
+        return readContentsAsString(file).startsWith(head);
     }
 }

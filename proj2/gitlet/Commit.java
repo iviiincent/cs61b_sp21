@@ -13,7 +13,13 @@ import static gitlet.Utils.*;
  *
  * @author Vincent Ma
  */
-public class Commit implements Serializable {
+public class Commit implements Serializable, Dumpable {
+    /**
+     * The initial commit for the repo.
+     */
+    public static final Commit INIT_COMMIT = new Commit("initial commit");
+
+
     /**
      * The format used in the log printing.
      */
@@ -44,7 +50,7 @@ public class Commit implements Serializable {
     /**
      * Casts the tracked files' name to their sha1.
      */
-    private final HashMap<String, String> trackedMap;
+    private final TreeMap<String, String> trackedMap;
 
 
     /**
@@ -61,15 +67,15 @@ public class Commit implements Serializable {
         if (parents.length == 0) {
             // initial commit
             date = new Date(0);
-            trackedMap = new HashMap<>();
+            trackedMap = new TreeMap<>();
         } else {
             date = new Date();
-            trackedMap = new HashMap<>(parents[0].trackedMap);
+            trackedMap = new TreeMap<>(parents[0].trackedMap);
         }
 
         Staging staging = Staging.getCurStaging();
-        HashMap<String, String> additional = staging.getAdditionalMap();
-        HashSet<String> removal = staging.getRemovalSet();
+        Map<String, String> additional = staging.getAdditionalMap();
+        Set<String> removal = staging.getRemovalSet();
 
         if (parents.length != 0 && additional.isEmpty() && removal.isEmpty()) {
             Repository.exit("No changes added to the commit.");
@@ -151,64 +157,66 @@ public class Commit implements Serializable {
     }
 
     /**
-     * Return if PARENT is an ancestor of CHILD.
-     *
-     * @param child Must not be null.
+     * Asserts that the relationship between given two commits is ancestor and
+     * child, returns the split commit of those.
      */
-    public static boolean isAncestor(Commit ancestor, Commit child) {
-        if (child == null) {
-            throw new NullPointerException("Commit child must not be null.");
-        }
-
-        if (ancestor == null) {
-            return false;
-        } else if (ancestor == child) {
-            return true;
-        }
-
-        for (Commit commit : ancestor.parents) {
-            if (isAncestor(commit, child)) {
-                return true;
+    public static Commit getSplitCommit(Commit a, Commit b) {
+        List<List<Commit>> lla = bfsAncestors(a);
+        List<Commit> lb = getAncestors(b);
+        for (List<Commit> la : lla) {
+            for (Commit ca : la) {
+                if (lb.contains(ca)) {
+                    return ca;
+                }
             }
         }
-        return false;
+        return INIT_COMMIT;
     }
 
     /**
-     * Assert that the relationship between given two commits is ancestor and
-     * child, return the split commit of those.
+     * Returns a list of commits, which are all ancestors of given commit.
      */
-    public static Commit getSplitCommit(Commit a, Commit b) {
-        if (a == null || b == null) {
-            throw new NullPointerException("There's no split commit.");
-        } else if (Objects.equals(a, b)) {
-            return a;
+    public static List<Commit> getAncestors(Commit commit) {
+        List<Commit> ancestors = new ArrayList<>();
+        if (commit == null) {
+            return ancestors;
         }
-
-        for (Commit commit : a.parents) {
-            Commit res = getSplitCommit(commit, b);
-            if (res != null) {
-                return res;
-            }
+        Queue<Commit> que = new ArrayDeque<>();
+        que.add(commit);
+        while (!que.isEmpty()) {
+            commit = que.peek();
+            ancestors.add(commit);
+            que.remove();
+            que.addAll(List.of(commit.parents));
         }
-        for (Commit commit : b.parents) {
-            Commit res = getSplitCommit(a, commit);
-            if (res != null) {
-                return res;
-            }
-        }
-        return null;
+        return ancestors;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Commit) {
-            return ((Commit) obj).commitId.equals(commitId);
+    /**
+     * Returns a list of lists of commits, in the order of bfs in tree.
+     */
+    public static List<List<Commit>> bfsAncestors(Commit commit) {
+        List<List<Commit>> bfs = new ArrayList<>();
+        if (commit == null) {
+            return bfs;
         }
-        return false;
+        Queue<Commit> que = new ArrayDeque<>();
+        que.add(commit);
+        while (!que.isEmpty()) {
+            int n = que.size();
+            List<Commit> level = new ArrayList<>(n);
+            for (int i = 0; i < n; ++i) {
+                commit = que.peek();
+                level.add(commit);
+                que.remove();
+                que.addAll(List.of(commit.parents));
+            }
+            bfs.add(level);
+        }
+        return bfs;
     }
 
-    public HashMap<String, String> getTrackedMap() {
+    public Map<String, String> getTrackedMap() {
         return trackedMap;
     }
 
@@ -264,5 +272,26 @@ public class Commit implements Serializable {
      */
     public boolean hasParents() {
         return parents.length > 0;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof Commit
+                && Objects.equals(hashCode(), obj.hashCode());
+    }
+
+    @Override
+    public String toString() {
+        return message;
+    }
+
+    /**
+     * Print useful information about this object on System.out.
+     */
+    @Override
+    public void dump() {
+        System.out.println(commitId);
+        System.out.println(message);
+        System.out.println(trackedMap.keySet());
     }
 }

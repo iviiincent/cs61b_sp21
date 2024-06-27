@@ -11,7 +11,7 @@ import static gitlet.Utils.*;
  *
  * @author Vincent Ma
  */
-public class Staging implements Serializable {
+public class Staging implements Serializable, Dumpable {
     /**
      * The file storing the staging object.
      */
@@ -21,12 +21,12 @@ public class Staging implements Serializable {
      * Casting the filename of additional files in staging area
      * to their SHA1 code.
      */
-    private final HashMap<String, String> additionalMap = new HashMap<>();
+    private final Map<String, String> additionalMap = new TreeMap<>();
 
     /**
      * The set of the filename of removal files in staging area.
      */
-    private final HashSet<String> removalSet = new HashSet<>();
+    private final TreeSet<String> removalSet = new TreeSet<>();
 
     /**
      * Get Staging object from .gitlet/index.
@@ -47,34 +47,41 @@ public class Staging implements Serializable {
      */
     public static List<String> getModifiedFiles(
             List<String> wdFilesName,
-            HashMap<String, String> trackedMap,
-            HashMap<String, Blob> wdBlobs,
-            HashMap<String, String> additionalMap,
-            HashSet<String> removalSet) {
+            Map<String, String> trackedMap,
+            Map<String, Blob> wdBlobs,
+            Map<String, String> additionalMap,
+            Set<String> removalSet) {
         List<String> resFiles = new ArrayList<>();
         if (wdFilesName == null) {
-            return resFiles;
+            throw new NullPointerException();
         }
 
-        HashSet<String> allFilesName = new HashSet<>(wdFilesName);
+        Set<String> allFilesName = new TreeSet<>(wdFilesName);
         allFilesName.addAll(trackedMap.keySet());
         for (String filename : allFilesName) {
+            if (Repository.isConflictFile(filename)) {
+                // skips the files storing conflict info.
+                continue;
+            }
             Blob blob = wdBlobs.get(filename);
             String trackedSha = trackedMap.get(filename);
             String stagedSha = additionalMap.get(filename);
             boolean isInWD = blob != null;
+            String curSha = isInWD ? blob.getSha1() : null;
             boolean isTracked = trackedSha != null;
             boolean isStaged = stagedSha != null;
+            boolean isRemoved = removalSet.contains(filename);
 
             boolean con = false;
             con |= isInWD && isTracked
-                    && !Objects.equals(trackedSha, blob.getSha1())
+                    && !Objects.equals(trackedSha, curSha)
                     && !isStaged;
             con |= isInWD && isStaged
-                    && !Objects.equals(stagedSha, blob.getSha1());
+                    && !Objects.equals(stagedSha, curSha);
             con |= !isInWD && isStaged;
-            con |= !removalSet.contains(filename) && isTracked
+            con |= !isRemoved && isTracked
                     && !isInWD;
+
             if (con) {
                 resFiles.add(filename);
             }
@@ -87,15 +94,15 @@ public class Staging implements Serializable {
      */
     public static List<String> getUntrackedFilesInStatus(
             List<String> wdFilesName,
-            HashMap<String, String> trackedMap,
-            HashMap<String, String> additionalMap,
-            HashSet<String> removalSet
+            Map<String, String> trackedMap,
+            Map<String, String> additionalMap,
+            Set<String> removalSet
     ) {
         List<String> resFiles = new ArrayList<>();
         if (wdFilesName == null) {
             return resFiles;
         }
-        HashSet<String> allFiles = new HashSet<>(wdFilesName);
+        Set<String> allFiles = new TreeSet<>(wdFilesName);
         allFiles.addAll(removalSet);
         for (String filename : allFiles) {
             boolean isTracked = trackedMap.containsKey(filename);
@@ -119,11 +126,11 @@ public class Staging implements Serializable {
         return additionalMap.isEmpty() && removalSet.isEmpty();
     }
 
-    public HashMap<String, String> getAdditionalMap() {
+    public Map<String, String> getAdditionalMap() {
         return additionalMap;
     }
 
-    public HashSet<String> getRemovalSet() {
+    public Set<String> getRemovalSet() {
         return removalSet;
     }
 
@@ -152,7 +159,7 @@ public class Staging implements Serializable {
     /**
      * Directly add to additionalMap. Only used when blob file is stored.
      */
-    public void addExisted(String filename, String sha) {
+    public void addExistedFile(String filename, String sha) {
         if (Blob.getBlobFile(sha) == null) {
             throw new NullPointerException("Missing blob file.");
         }
@@ -182,5 +189,16 @@ public class Staging implements Serializable {
      */
     public void save() {
         writeObject(STAGINGFILE, this);
+    }
+
+    /**
+     * Print useful information about this object on System.out.
+     */
+    @Override
+    public void dump() {
+        System.out.print("AdditionalMap=");
+        System.out.println(additionalMap.keySet());
+        System.out.print("RemovalSet=");
+        System.out.println(removalSet);
     }
 }
